@@ -1,6 +1,6 @@
 {
   "name": "gladys-mailjet",
-  "version": "0.1.0",
+  "version": "0.1.1",
   "private": true,
   "description": "Mailjet for Gladys Assistant: a send-only e-mail channel (Gladys messages and a scene action) through the Mailjet Send API v3.1, with an hourly limit.",
   "type": "module",

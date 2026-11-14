@@ -10,6 +10,8 @@ the notes of the version's GitHub Release.
 
 ## [Unreleased]
 
+## [0.1.1] - 2026-11-14
+
 ### Added
 
 - First version: a send-only e-mail channel through the Mailjet Send API v3.1
@@ -33,3 +35,6 @@ the notes of the version's GitHub Release.
   with a Mailjet key code) never sent again until they change or the Test
   button succeeds.
 - Addresses masked in the logs; no key, subject or text logged or kept.
+
+[Unreleased]: https://github.com/LM1LC3N7/gladys-mailjet/compare/v0.1.1...HEAD
+[0.1.1]: https://github.com/LM1LC3N7/gladys-mailjet/releases/tag/v0.1.1
