@@ -140,8 +140,8 @@
   {
     "name": "any 401 taken as a refusal",
     "file": "src/mailjet.js",
-    "from": "text.trim() === '' || codes.some((c) => KEY_CODES.has(c)) || data?.StatusCode === 401;",
-    "to": "true;"
+    "from": "const own = codes.some((c) => KEY_CODES.has(c));",
+    "to": "const own = true;"
   },
   {
     "name": "redirect followed",
@@ -184,5 +184,41 @@
     "file": "src/app.js",
     "from": "this.scheduleStatus(until);",
     "to": ""
+  },
+  {
+    "name": "Gladys messages relayed without the option",
+    "file": "src/app.js",
+    "from": "if (!cfg.forward) throw new SendError('forward_off');",
+    "to": ""
+  },
+  {
+    "name": "option on for any value",
+    "file": "src/config.js",
+    "from": "config.forward_gladys_messages === true || config.forward_gladys_messages === 'true';",
+    "to": "Boolean(config.forward_gladys_messages);"
+  },
+  {
+    "name": "a success clears a pause set meanwhile",
+    "file": "src/app.js",
+    "from": "if (pauseGen === this.pauseGen) {",
+    "to": "if (true) {"
+  },
+  {
+    "name": "pause step doubled beyond 1 h",
+    "file": "src/app.js",
+    "from": "Math.min(this.pauseStep * 2, PAUSE_MAX_MS)",
+    "to": "this.pauseStep * 2"
+  },
+  {
+    "name": "a cut connection given back",
+    "file": "src/mailjet.js",
+    "from": "sent: NOT_SENT.has(errCode) ? false : 'maybe',",
+    "to": "sent: false,"
+  },
+  {
+    "name": "429/5xx with an unreadable body not paused",
+    "file": "src/mailjet.js",
+    "from": "if (response.status === 429 || response.status >= 500) {",
+    "to": "if (false) {"
   }
 ]

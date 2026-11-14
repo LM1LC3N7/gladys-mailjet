@@ -142,6 +142,7 @@ export class MailjetApp {
     this.sends = []; // monotonic times of the e-mails that left (or may have), last hour
     this.pauseUntil = 0; // monotonic
     this.pauseStep = 0;
+    this.pauseGen = 0; // bumped by every pause set
     this.refused = null; // { salt, fp } (persisted)
     this.refusedFull = null; // sha256 of the refused keys, this process only
     this.succeeded = null; // the keys of the last success, to drop a stale refusal
@@ -297,6 +298,7 @@ export class MailjetApp {
       // A date further than the longest pause is invalid (clock jumped, foreign file).
       if (left > 0 && left <= RETRY_AFTER_MAX_MS) {
         this.pauseUntil = Math.max(this.pauseUntil, now + left);
+        this.pauseGen += 1;
       }
       if (isInt(pause.step, PAUSE_MIN_MS, PAUSE_MAX_MS)) {
         this.pauseStep = Math.max(this.pauseStep, pause.step);
@@ -433,6 +435,11 @@ export class MailjetApp {
   async sendMessage(contact, message) {
     const started = this.now();
     const cfg = await this.ready(MESSAGE_READY_MS);
+    // Off by default: the core cannot tell a targeted message from a broadcast
+    // (system messages, "Send a message" without a channel, a forgotten
+    // password link), so nothing it relays leaves unless the admin said so.
+    // Thrown (not returned) so the core log says why.
+    if (!cfg.forward) throw new SendError('forward_off');
     const to = parseEmail(contact?.email);
     if (!to) throw new SendError('contact_invalid');
     const text = cleanText(message?.text);
@@ -555,6 +562,8 @@ export class MailjetApp {
       }
       const body = this.buildBody(cfg, { to, subject, text, attachment, sandbox });
       if (ticket) ticket.left = true;
+      // A pause set while this request was on its way is not lifted by its success.
+      const pauseGen = this.pauseGen;
       let result;
       try {
         result = await this.post(cfg, body, left);
@@ -563,7 +572,7 @@ export class MailjetApp {
         this.failed(err, cfg, { to, path });
         throw new SendError(this.reasonOf(err), this.varsOf(err), err);
       }
-      this.succeededWith(cfg, { to, path, sandbox });
+      this.succeededWith(cfg, { to, path, sandbox, pauseGen });
       return result;
     } finally {
       this.release();
@@ -604,9 +613,11 @@ export class MailjetApp {
     }
   }
 
-  succeededWith(cfg, { to, path, sandbox }) {
-    this.pauseStep = 0;
-    this.pauseUntil = 0;
+  succeededWith(cfg, { to, path, sandbox, pauseGen }) {
+    if (pauseGen === this.pauseGen) {
+      this.pauseStep = 0;
+      this.pauseUntil = 0;
+    }
     this.refused = null;
     this.refusedFull = null;
     this.succeeded = { apiKey: cfg.apiKey, secretKey: cfg.secretKey };
@@ -634,6 +645,7 @@ export class MailjetApp {
         ? Math.min(err.retryAfterMs, RETRY_AFTER_MAX_MS)
         : 0;
       this.pauseUntil = this.now() + Math.max(this.pauseStep, asked);
+      this.pauseGen += 1;
     }
     // A refused address or e-mail says nothing about the channel: the status keeps its outcome.
     if (kind !== 'address_invalid' && kind !== 'invalid') {

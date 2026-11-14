@@ -54,8 +54,16 @@ export const ALL_TEXTS = {
     fr: 'Mailjet a accepté le dernier e-mail ({count} envoyés dans la dernière heure, plafond {limit}).',
   },
   tested: {
-    en: 'Mailjet accepted the keys and the sender (sandbox test, nothing delivered).',
-    fr: 'Mailjet a accepté les clés et l’expéditeur (test en bac à sable, rien n’a été distribué).',
+    en: 'Mailjet accepted the keys and the test message (sandbox test, nothing delivered; the sender may only be checked at the first real e-mail).',
+    fr: 'Mailjet a accepté les clés et le message de test (test en bac à sable, rien n’a été distribué ; l’expéditeur n’est peut-être vérifié qu’au premier vrai e-mail).',
+  },
+  forward_off: {
+    en: 'Gladys messages are not sent by e-mail (option “Also send the Gladys messages” off in the Mailjet configuration). Nothing was sent.',
+    fr: 'Les messages de Gladys ne sont pas envoyés par e-mail (option « Envoyer aussi les messages de Gladys » désactivée dans la configuration Mailjet). Rien n’a été envoyé.',
+  },
+  unauthorized: {
+    en: 'Mailjet (or a proxy) answered HTTP 401 without a Mailjet error code: check the keys. Not taken as a refusal: the next e-mail tries again.',
+    fr: 'Mailjet (ou un proxy) a répondu HTTP 401 sans code d’erreur Mailjet : vérifiez les clés. Pas pris pour un refus : le prochain e-mail réessaie.',
   },
   refused: {
     en: 'Mailjet refused these keys (wrong, deleted or suspended key). Nothing is sent with them until the keys change or the Test button succeeds.',
@@ -135,8 +143,8 @@ export const ALL_TEXTS = {
   },
   // The Test button.
   test_ok: {
-    en: 'Mailjet accepted the keys, the sender {sender} and a test e-mail in sandbox mode, in {ms} ms. Nothing was delivered: try a scene with the “Send an e-mail with Mailjet” action.',
-    fr: 'Mailjet a accepté les clés, l’expéditeur {sender} et un e-mail de test en mode bac à sable, en {ms} ms. Rien n’a été distribué : essayez une scène avec l’action « Envoyer un e-mail avec Mailjet ».',
+    en: 'Mailjet accepted the keys and a test e-mail from {sender} in sandbox mode, in {ms} ms. Nothing was delivered. Whether Mailjet checks the sender in sandbox mode is not confirmed: the first real e-mail tells (try a scene with the “Send an e-mail with Mailjet” action).',
+    fr: 'Mailjet a accepté les clés et un e-mail de test de {sender} en mode bac à sable, en {ms} ms. Rien n’a été distribué. Il n’est pas confirmé que Mailjet vérifie l’expéditeur en bac à sable : le premier vrai e-mail le dira (essayez une scène avec l’action « Envoyer un e-mail avec Mailjet »).',
   },
   test_subject: {
     en: 'Gladys: Mailjet test',

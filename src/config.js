@@ -18,6 +18,7 @@ export const DEFAULTS = {
   sender_name: 'Gladys',
   default_subject: 'Gladys',
   hourly_limit: DEFAULT_HOURLY_LIMIT,
+  forward_gladys_messages: false,
 };
 
 // A Mailjet API key and secret key: 32 hexadecimal characters today; letters
@@ -103,6 +104,9 @@ export function readConfig(raw = {}) {
     limit = n;
   }
 
+  const forward =
+    config.forward_gladys_messages === true || config.forward_gladys_messages === 'true';
+
   return {
     ok: true,
     apiKey,
@@ -111,5 +115,7 @@ export function readConfig(raw = {}) {
     senderName,
     subject,
     hourlyLimit: limit,
+    // Only true (or the string 'true') turns the relay of Gladys messages on.
+    forward,
   };
 }

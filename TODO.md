@@ -19,8 +19,12 @@
 - [ ] The sandbox mode checks the sender (`send-0008` expected for a sender
       not validated) and the keys (401) like a real send: the documentation
       says "the full range of error messages".
-- [ ] The body of a 401: empty or the `mj-0015` / `mj-0001` object (both are
-      taken as a refusal of the keys; any other body is not).
+- [ ] The body of a 401 for wrong keys: only the `mj-0015` / `mj-0001` object
+      is taken as a refusal; if Mailjet answers an empty body, wrong keys are
+      tried again at each e-mail (bounded by the hourly limit) and the code
+      should accept it.
+- [ ] `SandboxMode` really honored (the Test button would deliver a real
+      e-mail, outside the hourly limit, if Mailjet ignored it).
 - [ ] The `Retry-After` header on a 429 (the documentation does not say it is
       sent; without it, the pause is 60 s doubled).
 - [ ] The "My account" block shows the `email` field to every user, and an
@@ -42,11 +46,16 @@
   the SDK README, like Free Mobile or CallMeBot) plus a scene action for any
   address; no reception. `gladys_version: ">=5.1.0"` (scene actions and the
   external communication type). No `countries`.
-- **System messages**: Gladys may route its own messages (update done,
-  backup failed, low battery) to every channel or to this one; the
-  integration cannot tell them from a scene "Send a message" (same WebSocket
-  command), so the docs say it and the administrator chooses the channel in
-  the system settings. Each user opts in by entering an address.
+- **Gladys messages behind `forward_gladys_messages`, off by default**
+  (coordinator, review r1, like gladys-threema): the core relays to this
+  channel the "Send a message" scene action, the system messages (to all
+  channels unless the admin picked one) and the forgotten password link or
+  code (`POST /forgot_password`, no channel chosen). The WebSocket command
+  carries only the contact and the text: a targeted message cannot be told
+  from a broadcast, so the option covers everything that reaches
+  `onSendMessage`, checked first (before address, text, count, request).
+  Off: `forward_off` thrown; the core catches it in `forwardToChannels`, so
+  the refusal shows only in the core logs (said in the docs).
 - **No library**: plain `fetch` to `https://api.mailjet.com/v3.1/send`
   (Basic auth), redirects not followed (the keys would go with them), answer
   read within 64 KB and 20 s.
@@ -63,9 +72,14 @@
   background (20 s) and its outcome lands in the status; an e-mail still
   waiting for a slot is given up, never sent later. Configuration and /data
   are awaited 1 s at most on that path.
-- **Refusal of the keys**: only a 401 whose body is empty or Mailjet's own
-  error object; a 403 (`send-0006/7/8` sender, other denial), a 400, a
-  proxy page or a cut answer are not. Kept as 8 bits of an HMAC-SHA-256
+- **Refusal of the keys**: only a 401 carrying `mj-0001` or `mj-0015`
+  (review r1); an empty 401, a 403 (`send-0006/7/8` sender, other denial),
+  a 400, a proxy page or a cut answer are not (kind `unauthorized`, nothing
+  kept, the next e-mail tries again).
+- **A pause is not lifted by a success that left before it** (review r1): a
+  pause generation copied when a request leaves, compared on its success.
+- **429/5xx known from the status line**: a body too large or cut still
+  pauses (review r1). Kept as 8 bits of an HMAC-SHA-256
   under a random salt in `/data` (full hash in memory only); after a
   restart, other keys collide with probability 1/256, and the Test button,
   which always sends, clears it.

@@ -6,10 +6,15 @@ affiliated with Mailjet: a **send-only e-mail channel** (manifest type
 [Mailjet Send API v3.1](https://dev.mailjet.com/docs/email-api/send-api-v31/),
 with your own Mailjet account.
 
-- the Gladys messages (“Send a message” scene action, camera images, system
-  messages routed here) to each user who entered an address in “My account”;
 - a “Send an e-mail with Mailjet” scene action (one address, plain text);
-- a Test button in Mailjet sandbox mode (nothing delivered);
+- only if the option “Also send the Gladys messages” is on (off by default):
+  every Gladys message relayed to this channel (“Send a message” scene
+  action, system messages, a forgotten password link: the integration cannot
+  tell a targeted message from a broadcast) to each user who entered an
+  address in “My account”; off, they are refused and the refusal shows only
+  in the Gladys logs;
+- a Test button in Mailjet sandbox mode (nothing delivered; `SandboxMode` not
+  yet checked on a real account);
 - an hourly limit kept in `/data`, never an e-mail sent twice, a pause after
   a 429 or a server error, refused keys never sent again by themselves.
 

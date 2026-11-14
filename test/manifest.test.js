@@ -136,7 +136,15 @@ test('no key starts with gladys_; the secret has no default; nothing said encryp
 test('the config fields are the ones the code reads, with the same defaults and bounds', () => {
   assert.deepEqual(
     manifest.config_schema.filter((f) => f.type !== 'section').map((f) => f.key),
-    ['api_key', 'secret_key', 'sender_email', 'sender_name', 'default_subject', 'hourly_limit'],
+    [
+      'api_key',
+      'secret_key',
+      'sender_email',
+      'sender_name',
+      'default_subject',
+      'hourly_limit',
+      'forward_gladys_messages',
+    ],
   );
   const config = read('src/config.js');
   for (const f of manifest.config_schema.filter((x) => x.type !== 'section')) {
@@ -151,6 +159,11 @@ test('the config fields are the ones the code reads, with the same defaults and 
   assert.ok(readConfig({ ...KEYS, hourly_limit: limit.max }).ok);
   assert.ok(!readConfig({ ...KEYS, hourly_limit: limit.max + 1 }).ok);
   assert.ok(!readConfig({ ...KEYS, hourly_limit: limit.min - 1 }).ok);
+  // The relay of Gladys messages: a boolean, off by default.
+  const forward = field('forward_gladys_messages');
+  assert.equal(forward.type, 'boolean');
+  assert.equal(forward.default, false);
+  assert.equal(readConfig({ ...KEYS }).forward, false);
   // The address of each user: the key the code reads.
   assert.deepEqual(
     manifest.contact_schema.map((f) => [f.key, f.type]),

@@ -9,7 +9,8 @@ import assert from 'node:assert/strict';
 import { createFakeGladys } from '@gladysassistant/integration-sdk/testing';
 import { attachmentOf, cleanText, fp8 } from '../src/app.js';
 import { maskEmail, parseEmail, readConfig } from '../src/config.js';
-import { MailjetError } from '../src/mailjet.js';
+import { createServer } from 'node:http';
+import { MailjetError, createMailjet } from '../src/mailjet.js';
 import { createMemoryStore } from '../src/store.js';
 import { testClock, waitFor } from './helpers/clock.js';
 import {
@@ -704,4 +705,117 @@ test('the status comes back by itself when a pause or the full hour ends', async
   await clock.advance(62 * SECOND);
   assert.equal(lastStatus(gladys)[0], true);
   assert.match(lastStatus(gladys)[1], /^Ready\./);
+});
+
+test('Gladys messages: nothing leaves unless the option is exactly on; scene and Test do not need it', async () => {
+  for (const value of [undefined, false, 'false', '', 0, 1, 'yes', null]) {
+    const config = { ...CONFIG, forward_gladys_messages: value };
+    const { gladys, mailjet, clock, app } = await makeApp({ config });
+    await clock.advance(SECOND);
+    // Even a bad address and an empty text: the option is checked first.
+    for (const ack of [await message(gladys), await message(gladys, '', 'bad')]) {
+      assert.equal(ack.success, false, String(value));
+      assert.match(ack.error, /option “Also send the Gladys messages” off/);
+    }
+    assert.equal(mailjet.calls.length, 0);
+    assert.equal(app.sends.length, 0);
+    assert.equal(lastStatus(gladys)[0], true);
+    assert.equal((await sceneSend(gladys)).success, true);
+    assert.equal((await gladys.fake.action('test_connection', {})).success, true);
+    await app.stop();
+  }
+  for (const value of [true, 'true']) {
+    const { gladys, mailjet, clock } = await makeApp({
+      config: { ...CONFIG, forward_gladys_messages: value },
+    });
+    await clock.advance(SECOND);
+    assert.equal((await message(gladys)).success, true);
+    assert.equal(mailjet.calls.length, 1);
+  }
+});
+
+test('a pause set while another request was on its way is not lifted by its success', async () => {
+  const slow = gate();
+  const { gladys, mailjet, clock } = await makeApp({ mailjet: fakeMailjet(slow.answer) });
+  await clock.advance(SECOND);
+  const a = sceneSend(gladys);
+  const b = sceneSend(gladys);
+  await settle();
+  assert.equal(slow.waiting.length, 2);
+  // The first answered 429, the second (already gone) then succeeds.
+  slow.fail(err('throttled', { status: 429, sent: false }));
+  await settle();
+  slow.release();
+  assert.equal((await a).success, false);
+  assert.equal((await b).success, true);
+  const third = await sceneSend(gladys);
+  assert.match(third.error, /slow down or failed/);
+  assert.equal(mailjet.calls.length, 2);
+  assert.match(lastStatus(gladys)[1], /slow down/);
+  await clock.advance(61 * SECOND);
+  mailjet.answer = success;
+  assert.equal((await sceneSend(gladys)).success, true);
+});
+
+test('the pause step doubles up to 1 hour, never beyond, also in /data', async () => {
+  const store = createMemoryStore();
+  const { gladys, mailjet, clock, app } = await makeApp({ store });
+  await clock.advance(SECOND);
+  mailjet.answer = () => {
+    throw err('unavailable', { status: 503 });
+  };
+  for (let i = 0; i < 8; i += 1) {
+    await sceneSend(gladys);
+    const left = app.pausedFor();
+    assert.ok(left <= HOUR, `failure ${i + 1}: ${left}`);
+    await clock.advance(left + SECOND);
+  }
+  assert.equal(app.pauseStep, HOUR);
+  await sceneSend(gladys);
+  assert.equal(store.data.pause.step, HOUR);
+  assert.ok(store.data.pause.until - (START + clock.elapsed) <= HOUR + SECOND);
+  assert.equal(mailjet.calls.length, 9);
+});
+
+test('the real client: a connection cut after the request stays counted; a refused one is given back', async (t) => {
+  const srv = createServer((req) => req.on('data', () => {}).on('end', () => req.socket.destroy()));
+  await new Promise((resolve) => srv.listen(0, '127.0.0.1', resolve));
+  t.after(() => {
+    srv.closeAllConnections();
+    return new Promise((resolve) => srv.close(resolve));
+  });
+  const url = `http://127.0.0.1:${srv.address().port}/v3.1/send`;
+  const store = createMemoryStore();
+  const { gladys, app } = await makeApp({ store, mailjet: createMailjet({ userAgent: 't', url }) });
+  const ack = await sceneSend(gladys);
+  assert.equal(ack.success, false);
+  assert.match(ack.error, /may have been sent/);
+  assert.equal(app.sends.length, 1);
+  await settle();
+  assert.equal(store.data.sends.length, 1);
+  // A port that refuses: nothing left, given back.
+  const closed = createServer();
+  await new Promise((resolve) => closed.listen(0, '127.0.0.1', resolve));
+  const port = closed.address().port;
+  await new Promise((resolve) => closed.close(resolve));
+  app.mailjet = createMailjet({ userAgent: 't', url: `http://127.0.0.1:${port}/v3.1/send` });
+  const refused = await sceneSend(gladys);
+  assert.match(refused.error, /nothing was sent/);
+  assert.equal(app.sends.length, 1);
+  await settle();
+  assert.equal(store.data.sends.length, 1);
+});
+
+test('a 401 without a Mailjet key code is not kept as a refusal', async () => {
+  const store = createMemoryStore();
+  const { gladys, mailjet, clock } = await makeApp({ store });
+  await clock.advance(SECOND);
+  mailjet.answer = () => {
+    throw err('unauthorized', { status: 401, sent: false });
+  };
+  assert.match((await sceneSend(gladys)).error, /without a Mailjet error code/);
+  assert.equal(store.data.refused, null);
+  mailjet.answer = success;
+  assert.equal((await sceneSend(gladys)).success, true);
+  assert.equal(mailjet.calls.length, 2);
 });

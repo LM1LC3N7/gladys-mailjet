@@ -95,11 +95,12 @@ test('a sandbox success has no id; a MessageID alone is taken', async (t) => {
 
 test('401: a refusal of the keys only when the answer is Mailjet’s', async (t) => {
   for (const [body, kind] of [
-    ['', 'refused'],
     [{ ErrorCode: 'mj-0015', StatusCode: 401, ErrorMessage: 'x' }, 'refused'],
     [{ ErrorCode: 'mj-0001', StatusCode: 401 }, 'refused'],
-    ['<html>Proxy authentication</html>', 'unexpected'],
-    ['{"ErrorCode":"mj-00', 'unexpected'],
+    ['', 'unauthorized'],
+    [{ StatusCode: 401 }, 'unauthorized'],
+    ['<html>Proxy authentication</html>', 'unauthorized'],
+    ['{"ErrorCode":"mj-00', 'unauthorized'],
   ]) {
     const { error } = await send(t, reply(401, body));
     assert.equal(error.kind, kind, JSON.stringify(body));
@@ -169,7 +170,7 @@ test('a 200 that is not a readable success, or too large: unconfirmed, it may ha
     }, 1);
   });
   assert.equal(big.error.kind, 'unconfirmed');
-  const bigError = await send(t, reply(500, 'y'.repeat(100 * 1024)));
+  const bigError = await send(t, reply(404, 'y'.repeat(100 * 1024)));
   assert.equal(bigError.error.kind, 'too_large');
 });
 
@@ -221,4 +222,25 @@ test('error codes: well-formed ones only, bounded', () => {
     Messages: [{ Errors: Array.from({ length: 50 }, (_, i) => ({ ErrorCode: `mj-${1000 + i}` })) }],
   };
   assert.equal(errorCodes(many).length, 5);
+});
+
+test('a 429 or 5xx whose body is too large or cut is still a 429 or 5xx', async (t) => {
+  const big429 = await send(t, reply(429, 'z'.repeat(70_000), { 'Retry-After': '90' }));
+  assert.equal(big429.error.kind, 'throttled');
+  assert.equal(big429.error.retryAfterMs, 90_000);
+  const big503 = await send(t, reply(503, 'z'.repeat(70_000)));
+  assert.equal(big503.error.kind, 'unavailable');
+  const cut = await send(t, (req, res) => {
+    res.writeHead(503, { 'Content-Type': 'application/json', 'Content-Length': '500' });
+    res.write('{"Error');
+    setTimeout(() => res.destroy(), 20);
+  });
+  assert.equal(cut.error.kind, 'unavailable');
+});
+
+test('a connection reset after the request was written: it may have left', async (t) => {
+  const { error, srv } = await send(t, (req) => req.socket.destroy());
+  assert.equal(srv.requests.length, 1);
+  assert.equal(error.kind, 'network');
+  assert.equal(error.sent, 'maybe');
 });

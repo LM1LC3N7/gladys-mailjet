@@ -5,12 +5,12 @@
 //
 // Answers (https://dev.mailjet.com/docs/email-api/send-api-v31/send-api-errors):
 //   200 + Messages[0].Status "success"  sent (or accepted in sandbox mode)
-//   401 (mj-0001 suspended, mj-0015 bad credentials)  the keys are refused
+//   401 with mj-0001 (suspended) or mj-0015 (bad credentials)  the keys are refused
 //   403 send-0006/0007/0008  the sender is not validated (not a key refusal)
 //   400  the message was refused (address, size...): nothing sent
 //   429 / 5xx  slow down / Mailjet failing: the caller pauses
-// A 401 whose body is not Mailjet's (a proxy page, a cut answer) is not a
-// refusal of the keys.
+// A 401 without one of those codes (empty, a proxy page, a cut answer) is not
+// a refusal of the keys.
 // -----------------------------------------------------------------------------
 
 import { API_URL, MAX_RESPONSE_BYTES } from './constants.js';
@@ -24,7 +24,8 @@ const CODE = /^[a-z]{2,8}-\d{4}$/;
 export class MailjetError extends Error {
   /**
    * @param {string} kind refused | sender | denied | address_invalid | invalid |
-   *   throttled | unavailable | unconfirmed | unexpected | too_large | timeout | network
+   *   throttled | unavailable | unconfirmed | unexpected | unauthorized | too_large |
+   *   timeout | network
    * @param {object} info sent: false (nothing left), true or 'maybe'
    */
   constructor(kind, { status, code = '', sent = 'maybe', retryAfterMs, detail = '' } = {}) {
@@ -127,11 +128,10 @@ export function classify(status, text, headers = new Headers()) {
     });
   }
   if (status === 401) {
-    // Mailjet answers a refused key with an empty body or its own error
-    // object; anything else (an HTML page, a cut JSON) is not a refusal.
-    const own =
-      text.trim() === '' || codes.some((c) => KEY_CODES.has(c)) || data?.StatusCode === 401;
-    throw new MailjetError(own ? 'refused' : 'unexpected', { status, code, sent: false });
+    // Only Mailjet's own key codes are a refusal of the keys; an empty body,
+    // an HTML page (a proxy) or a cut JSON are not: nothing is kept.
+    const own = codes.some((c) => KEY_CODES.has(c));
+    throw new MailjetError(own ? 'refused' : 'unauthorized', { status, code, sent: false });
   }
   if (status === 403) {
     const sender = codes.some((c) => SENDER_CODES.has(c));
@@ -190,6 +190,11 @@ export function createMailjet({ userAgent, url = API_URL, fetch = globalThis.fet
       try {
         text = await readBounded(response, MAX_RESPONSE_BYTES);
       } catch (err) {
+        // A 429 or a 5xx is known from its status line: the pause holds even
+        // when the body is too large or cut.
+        if (response.status === 429 || response.status >= 500) {
+          return classify(response.status, '', response.headers);
+        }
         if (err instanceof MailjetError) {
           // Too large: a success is never read from it, it may have left.
           if (response.status >= 200 && response.status < 300) {

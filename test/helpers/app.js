@@ -18,7 +18,13 @@ export const API_KEY_2 = '1111111111abcdef0123456789abcdef';
 export const SECRET_2 = '2222222222543210fedcba9876543210';
 export const SENDER = 'home@example.com';
 export const TO = 'alice.martin@example.org';
-export const CONFIG = { api_key: API_KEY, secret_key: SECRET, sender_email: SENDER };
+// The relay of Gladys messages on: the tests of onSendMessage need it (off by default).
+export const CONFIG = {
+  api_key: API_KEY,
+  secret_key: SECRET,
+  sender_email: SENDER,
+  forward_gladys_messages: true,
+};
 export const SECOND = 1000;
 export const MINUTE = 60 * SECOND;
 export const HOUR = 60 * MINUTE;

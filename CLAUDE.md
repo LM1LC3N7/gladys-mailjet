@@ -11,9 +11,13 @@ service (Node 22+, ESM, no build step) in its own sandboxed Docker container,
 talking to Gladys through
 [`@gladysassistant/integration-sdk`](https://github.com/GladysAssistant/integration-sdk-js)
 and to the **Mailjet Send API v3.1** with plain `fetch` and the user's own
-keys. E-mails leave on three paths only: a Gladys message (`onSendMessage`,
-the address of the user's "My account" block), the `send_email` scene
-action, and the `test_connection` button (sandbox mode, nothing delivered).
+keys. E-mails leave on three paths only: the `send_email` scene action, a
+Gladys message (`onSendMessage`, the address of the user's "My account"
+block) ONLY when `forward_gladys_messages` is on (off by default: the core
+relays broadcasts too, system messages and forgotten password links, and the
+integration cannot tell them from a targeted message; off, `forward_off` is
+thrown first and only shows in the core logs), and the `test_connection`
+button (sandbox mode, nothing delivered).
 Unofficial: not affiliated with Mailjet.
 
 ## Commands
@@ -64,8 +68,8 @@ scripts/                          cover.png generator, mutation runner and list
 - **Never a key, a full address, a subject or a text** in a log, the status,
   an error, `/data` or a test fixture (the test keys are made up). Addresses
   go through `maskEmail`.
-- **Only a 401 of Mailjet is a refusal of the keys**; a 403, a 400, a proxy
-  page or a cut answer are not. A refused key is never sent again by itself;
+- **Only a 401 with `mj-0001`/`mj-0015` is a refusal of the keys**; an empty
+  401, a 403, a 400, a proxy page or a cut answer are not. A refused key is never sent again by itself;
   new keys are always tried; the Test button always tries.
 - **Throttling or 5xx**: a pause on the monotonic clock (60 s doubled up to
   1 h, Retry-After up to 6 h), its wall end in `/data`; the wall clock serves
@@ -76,7 +80,7 @@ scripts/                          cover.png generator, mutation runner and list
   never written before it was read; never blocks a send.
 - **Config keys, the action key and the scene action key are forever**
   (`api_key`, `secret_key`, `sender_email`, `sender_name`, `default_subject`,
-  `hourly_limit`, contact `email`, `test_connection`, `send_email` and its
+  `hourly_limit`, `forward_gladys_messages`, contact `email`, `test_connection`, `send_email` and its
   fields `to`, `subject`, `text`, output `message_id`).
 - **The container rootfs is read-only.** Write only under `/data`.
 - **Versions belong to the Release workflow** (Actions → Release). Never edit
