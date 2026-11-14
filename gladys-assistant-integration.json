@@ -12,36 +12,25 @@
   "cover_image": "https://raw.githubusercontent.com/LM1LC3N7/gladys-mailjet/main/cover.png",
   "categories": ["notifications"],
   "transports": ["cloud"],
-  "messaging": {
-    "receive": false
-  },
+  "messaging": { "receive": false },
   "contact_schema": [
     {
       "key": "email",
       "type": "string",
       "required": true,
-      "label": {
-        "en": "Your e-mail address",
-        "fr": "Votre adresse e-mail"
-      },
+      "label": { "en": "Your e-mail address", "fr": "Votre adresse e-mail" },
       "description": {
         "en": "Used only when the administrator turned on “Also send the Gladys messages” in the configuration: the Gladys messages meant for you (the “Send a message” scene action, the system messages, a forgotten password link) then arrive at this address. To stop them, clear your account here.",
         "fr": "Utilisée seulement si l’administrateur a activé « Envoyer aussi les messages de Gladys » dans la configuration : les messages de Gladys qui vous sont destinés (l’action de scène « Envoyer un message », les messages système, un lien de mot de passe oublié) arrivent alors à cette adresse. Pour les arrêter, effacez votre compte ici."
       },
-      "placeholder": {
-        "en": "me@example.com",
-        "fr": "moi@example.com"
-      }
+      "placeholder": { "en": "me@example.com", "fr": "moi@example.com" }
     }
   ],
   "config_schema": [
     {
       "key": "intro",
       "type": "section",
-      "label": {
-        "en": "Mailjet in Gladys",
-        "fr": "Mailjet dans Gladys"
-      },
+      "label": { "en": "Mailjet in Gladys", "fr": "Mailjet dans Gladys" },
       "description": {
         "en": "Unofficial integration, not affiliated with Mailjet. It only sends e-mails, never reads any: the “Send an e-mail with Mailjet” scene action and, only if the option below is on, the Gladys messages to each user who entered an address in “My account”. Create the API keys in Mailjet (Account settings, REST API, API key management), validate the sender address or its domain (Senders & Domains), then click “Test”: Mailjet checks the keys and a test message in sandbox mode and delivers nothing. Every e-mail counts in your Mailjet plan; the hourly limit below stops a runaway scene.",
         "fr": "Intégration non officielle, sans lien avec Mailjet. Elle envoie des e-mails, n’en lit jamais : l’action de scène « Envoyer un e-mail avec Mailjet » et, seulement si l’option ci-dessous est activée, les messages de Gladys à chaque utilisateur qui a saisi une adresse dans « Mon compte ». Créez les clés d’API dans Mailjet (Paramètres du compte, API REST, gestion des clés API), validez l’adresse de l’expéditeur ou son domaine (Expéditeurs et domaines), puis cliquez sur « Tester » : Mailjet vérifie les clés et un message de test en mode bac à sable et ne distribue rien. Chaque e-mail compte dans votre forfait Mailjet ; le plafond horaire ci-dessous arrête une scène qui s’emballe."
@@ -49,31 +38,19 @@
       "links": [
         {
           "url": "https://app.mailjet.com/account/apikeys",
-          "label": {
-            "en": "Mailjet API keys",
-            "fr": "Clés d’API Mailjet"
-          }
+          "label": { "en": "Mailjet API keys", "fr": "Clés d’API Mailjet" }
         },
         {
           "url": "https://app.mailjet.com/account/sender",
-          "label": {
-            "en": "Mailjet senders and domains",
-            "fr": "Expéditeurs et domaines Mailjet"
-          }
+          "label": { "en": "Mailjet senders and domains", "fr": "Expéditeurs et domaines Mailjet" }
         },
         {
           "url": "https://github.com/LM1LC3N7/gladys-mailjet/blob/main/docs/en.md",
-          "label": {
-            "en": "Guide (English)",
-            "fr": "Guide (anglais)"
-          }
+          "label": { "en": "Guide (English)", "fr": "Guide (anglais)" }
         },
         {
           "url": "https://github.com/LM1LC3N7/gladys-mailjet/blob/main/docs/fr.md",
-          "label": {
-            "en": "Guide (French)",
-            "fr": "Guide (français)"
-          }
+          "label": { "en": "Guide (French)", "fr": "Guide (français)" }
         }
       ]
     },
@@ -81,10 +58,7 @@
       "key": "api_key",
       "type": "string",
       "required": true,
-      "label": {
-        "en": "API key",
-        "fr": "Clé d’API"
-      },
+      "label": { "en": "API key", "fr": "Clé d’API" },
       "description": {
         "en": "The public part of the key pair (32 characters), sent only to Mailjet.",
         "fr": "La partie publique de la paire de clés (32 caractères), envoyée seulement à Mailjet."
@@ -94,10 +68,7 @@
       "key": "secret_key",
       "type": "secret",
       "required": true,
-      "label": {
-        "en": "Secret key",
-        "fr": "Clé secrète"
-      },
+      "label": { "en": "Secret key", "fr": "Clé secrète" },
       "description": {
         "en": "The private part of the key pair. Kept by Gladys in its database, never shown again, sent only to Mailjet.",
         "fr": "La partie privée de la paire de clés. Gardée par Gladys dans sa base, jamais réaffichée, envoyée seulement à Mailjet."
@@ -107,38 +78,26 @@
       "key": "sender_email",
       "type": "string",
       "required": true,
-      "label": {
-        "en": "Sender address",
-        "fr": "Adresse de l’expéditeur"
-      },
+      "label": { "en": "Sender address", "fr": "Adresse de l’expéditeur" },
       "description": {
         "en": "Must be validated in Mailjet (the address or its domain), otherwise Mailjet refuses every e-mail.",
         "fr": "Doit être validée chez Mailjet (l’adresse ou son domaine), sinon Mailjet refuse chaque e-mail."
       },
-      "placeholder": {
-        "en": "home@example.com",
-        "fr": "maison@example.com"
-      }
+      "placeholder": { "en": "home@example.com", "fr": "maison@example.com" }
     },
     {
       "key": "sender_name",
       "type": "string",
       "required": false,
       "default": "Gladys",
-      "label": {
-        "en": "Sender name",
-        "fr": "Nom de l’expéditeur"
-      }
+      "label": { "en": "Sender name", "fr": "Nom de l’expéditeur" }
     },
     {
       "key": "default_subject",
       "type": "string",
       "required": false,
       "default": "Gladys",
-      "label": {
-        "en": "Subject of the Gladys messages",
-        "fr": "Objet des messages de Gladys"
-      },
+      "label": { "en": "Subject of the Gladys messages", "fr": "Objet des messages de Gladys" },
       "description": {
         "en": "Also used by the scene action when it gives no subject.",
         "fr": "Aussi utilisé par l’action de scène quand elle ne donne pas d’objet."
@@ -151,10 +110,7 @@
       "default": 20,
       "min": 1,
       "max": 200,
-      "label": {
-        "en": "Hourly limit of e-mails",
-        "fr": "Plafond horaire d’e-mails"
-      },
+      "label": { "en": "Hourly limit of e-mails", "fr": "Plafond horaire d’e-mails" },
       "description": {
         "en": "At most this many e-mails in any 60 minutes (Gladys messages and scene actions together, Test excluded); beyond, nothing is sent and the action fails. Kept across restarts.",
         "fr": "Au plus ce nombre d’e-mails sur 60 minutes glissantes (messages de Gladys et actions de scène ensemble, Tester exclu) ; au-delà, rien n’est envoyé et l’action échoue. Conservé aux redémarrages."
@@ -179,10 +135,7 @@
     {
       "key": "test_connection",
       "timeout_seconds": 30,
-      "label": {
-        "en": "Test",
-        "fr": "Tester"
-      },
+      "label": { "en": "Test", "fr": "Tester" },
       "description": {
         "en": "Sends a test e-mail in Mailjet sandbox mode with the saved settings: Mailjet checks the keys and the message and delivers nothing (whether it checks the sender in sandbox mode is not confirmed). It calls Mailjet each time, outside the hourly limit.",
         "fr": "Envoie un e-mail de test en mode bac à sable de Mailjet avec les réglages enregistrés : Mailjet vérifie les clés et le message et ne distribue rien (qu’il vérifie l’expéditeur en bac à sable n’est pas confirmé). Il appelle Mailjet à chaque fois, hors plafond horaire."
@@ -196,10 +149,7 @@
             "en": "Recipient (empty: the sender address)",
             "fr": "Destinataire (vide : l’adresse de l’expéditeur)"
           },
-          "placeholder": {
-            "en": "me@example.com",
-            "fr": "moi@example.com"
-          }
+          "placeholder": { "en": "me@example.com", "fr": "moi@example.com" }
         }
       ]
     }
@@ -207,10 +157,7 @@
   "scene_actions": [
     {
       "key": "send_email",
-      "label": {
-        "en": "Send an e-mail with Mailjet",
-        "fr": "Envoyer un e-mail avec Mailjet"
-      },
+      "label": { "en": "Send an e-mail with Mailjet", "fr": "Envoyer un e-mail avec Mailjet" },
       "description": {
         "en": "Sends one plain-text e-mail to one address, within the hourly limit. Never sent twice: when Mailjet does not confirm, the action fails without sending again.",
         "fr": "Envoie un e-mail en texte brut à une adresse, dans la limite du plafond horaire. Jamais envoyé deux fois : si Mailjet ne confirme pas, l’action échoue sans renvoyer."
@@ -221,14 +168,8 @@
           "key": "to",
           "type": "string",
           "required": true,
-          "label": {
-            "en": "Recipient address",
-            "fr": "Adresse du destinataire"
-          },
-          "placeholder": {
-            "en": "me@example.com",
-            "fr": "moi@example.com"
-          }
+          "label": { "en": "Recipient address", "fr": "Adresse du destinataire" },
+          "placeholder": { "en": "me@example.com", "fr": "moi@example.com" }
         },
         {
           "key": "subject",
@@ -243,20 +184,14 @@
           "key": "text",
           "type": "string",
           "required": true,
-          "label": {
-            "en": "Text",
-            "fr": "Texte"
-          }
+          "label": { "en": "Text", "fr": "Texte" }
         }
       ],
       "outputs": [
         {
           "key": "message_id",
           "type": "string",
-          "label": {
-            "en": "Mailjet message id",
-            "fr": "Identifiant Mailjet du message"
-          }
+          "label": { "en": "Mailjet message id", "fr": "Identifiant Mailjet du message" }
         }
       ]
     }

@@ -310,19 +310,35 @@ test('new keys are always tried after a refusal', async () => {
   assert.equal(lastStatus(gladys)[0], true);
 });
 
-test('a sender not validated or a 403 is not a refusal of the keys', async () => {
-  const { gladys, mailjet, clock } = await makeApp();
+test('a sender not validated or a 403 is not a refusal of the keys, but pauses', async () => {
+  const store = createMemoryStore();
+  const { gladys, mailjet, clock } = await makeApp({
+    store,
+    config: { ...CONFIG, hourly_limit: 3 },
+  });
   await clock.advance(SECOND);
   mailjet.answer = () => {
     throw err('sender', { status: 403, sent: false, code: 'send-0008' });
   };
   const ack = await sceneSend(gladys);
-  assert.match(ack.error, /not the sender address/);
-  assert.match(lastStatus(gladys)[1], /not the sender address/);
+  assert.match(ack.error, /not the sender address.*Nothing is sent before 10:01 \(UTC\)/);
+  assert.match(lastStatus(gladys)[1], /not the sender address.*before 10:01/);
+  // Not hammered: 10 more e-mails, no request.
+  for (let i = 0; i < 10; i += 1) {
+    assert.match((await sceneSend(gladys)).error, /slow down or failed/);
+  }
+  assert.equal(mailjet.calls.length, 1);
+  assert.equal(store.data.refused, null);
+  assert.ok(store.data.pause.until > START);
+  await clock.advance(61 * SECOND);
+  assert.match(lastStatus(gladys)[1], /^Ready\./);
   mailjet.answer = () => {
     throw err('denied', { status: 403, sent: false, code: 'send-0099' });
   };
   assert.match((await sceneSend(gladys)).error, /denied the sending \(HTTP 403, send-0099\)/);
+  await clock.advance(61 * SECOND);
+  assert.equal((await sceneSend(gladys)).success, false, 'step doubled: 120 s');
+  await clock.advance(60 * SECOND);
   mailjet.answer = success;
   assert.equal((await sceneSend(gladys)).success, true);
   assert.equal(mailjet.calls.length, 3);
@@ -806,15 +822,25 @@ test('the real client: a connection cut after the request stays counted; a refus
   assert.equal(store.data.sends.length, 1);
 });
 
-test('a 401 without a Mailjet key code is not kept as a refusal', async () => {
+test('a 401 without a Mailjet key code: not kept as a refusal, but a pause (Test included)', async () => {
   const store = createMemoryStore();
-  const { gladys, mailjet, clock } = await makeApp({ store });
+  const { gladys, mailjet, clock } = await makeApp({
+    store,
+    config: { ...CONFIG, hourly_limit: 3 },
+  });
   await clock.advance(SECOND);
   mailjet.answer = () => {
     throw err('unauthorized', { status: 401, sent: false });
   };
-  assert.match((await sceneSend(gladys)).error, /without a Mailjet error code/);
+  const first = await sceneSend(gladys);
+  assert.match(first.error, /without a Mailjet error code.*nothing is sent before 10:01 \(UTC\)/);
+  for (let i = 0; i < 9; i += 1) assert.equal((await sceneSend(gladys)).success, false);
+  assert.equal((await gladys.fake.action('test_connection', {})).success, false);
+  assert.equal(mailjet.calls.length, 1, '10 e-mails, 1 request');
+  assert.match(lastStatus(gladys)[1], /without a Mailjet error code/);
   assert.equal(store.data.refused, null);
+  assert.ok(store.data.pause);
+  await clock.advance(61 * SECOND);
   mailjet.answer = success;
   assert.equal((await sceneSend(gladys)).success, true);
   assert.equal(mailjet.calls.length, 2);

@@ -20,9 +20,10 @@
       not validated) and the keys (401) like a real send: the documentation
       says "the full range of error messages".
 - [ ] The body of a 401 for wrong keys: only the `mj-0015` / `mj-0001` object
-      is taken as a refusal; if Mailjet answers an empty body, wrong keys are
-      tried again at each e-mail (bounded by the hourly limit) and the code
-      should accept it.
+      is taken as a refusal; any other 401 (an empty body included) only sets
+      the pause of a 429 (60 s doubled up to 1 h, kept in /data), so wrong keys
+      are tried again at most once per pause; if Mailjet answers an empty
+      body, the code should accept it as a refusal.
 - [ ] `SandboxMode` really honored (the Test button would deliver a real
       e-mail, outside the hourly limit, if Mailjet ignored it).
 - [ ] The `Retry-After` header on a 429 (the documentation does not say it is
@@ -75,11 +76,15 @@
 - **Refusal of the keys**: only a 401 carrying `mj-0001` or `mj-0015`
   (review r1); an empty 401, a 403 (`send-0006/7/8` sender, other denial),
   a 400, a proxy page or a cut answer are not (kind `unauthorized`, nothing
-  kept, the next e-mail tries again).
+  kept; a 401 without code and a 403 set the pause of a 429, review r2).
 - **A pause is not lifted by a success that left before it** (review r1): a
   pause generation copied when a request leaves, compared on its success.
 - **429/5xx known from the status line**: a body too large or cut still
-  pauses (review r1). Kept as 8 bits of an HMAC-SHA-256
+  pauses (review r1).
+- **A 401 without a Mailjet key code and any 403 pause** like a 429
+  (coordinator, review r2): given back to the hourly count (nothing left),
+  so without the pause a looping scene would hammer Mailjet with possibly
+  wrong keys; no refusal is kept. Kept as 8 bits of an HMAC-SHA-256
   under a random salt in `/data` (full hash in memory only); after a
   restart, other keys collide with probability 1/256, and the Test button,
   which always sends, clears it.

@@ -62,20 +62,20 @@ export const ALL_TEXTS = {
     fr: 'Les messages de Gladys ne sont pas envoyés par e-mail (option « Envoyer aussi les messages de Gladys » désactivée dans la configuration Mailjet). Rien n’a été envoyé.',
   },
   unauthorized: {
-    en: 'Mailjet (or a proxy) answered HTTP 401 without a Mailjet error code: check the keys. Not taken as a refusal: the next e-mail tries again.',
-    fr: 'Mailjet (ou un proxy) a répondu HTTP 401 sans code d’erreur Mailjet : vérifiez les clés. Pas pris pour un refus : le prochain e-mail réessaie.',
+    en: 'Mailjet (or a proxy) answered HTTP 401 without a Mailjet error code: check the keys. Not kept as a refusal of the keys, but nothing is sent before {time} (UTC).',
+    fr: 'Mailjet (ou un proxy) a répondu HTTP 401 sans code d’erreur Mailjet : vérifiez les clés. Pas retenu comme refus des clés, mais rien n’est envoyé avant {time} (UTC).',
   },
   refused: {
     en: 'Mailjet refused these keys (wrong, deleted or suspended key). Nothing is sent with them until the keys change or the Test button succeeds.',
     fr: 'Mailjet a refusé ces clés (clé erronée, supprimée ou suspendue). Plus rien n’est envoyé avec elles tant que les clés ne changent pas ou que le bouton Tester ne réussit pas.',
   },
   sender: {
-    en: 'Mailjet accepted the keys but not the sender address: validate it (or its domain) in Mailjet, Senders & Domains.',
-    fr: 'Mailjet a accepté les clés mais pas l’adresse de l’expéditeur : validez-la (ou son domaine) dans Mailjet, Expéditeurs et domaines.',
+    en: 'Mailjet accepted the keys but not the sender address: validate it (or its domain) in Mailjet, Senders & Domains. Nothing is sent before {time} (UTC).',
+    fr: 'Mailjet a accepté les clés mais pas l’adresse de l’expéditeur : validez-la (ou son domaine) dans Mailjet, Expéditeurs et domaines. Rien n’est envoyé avant {time} (UTC).',
   },
   denied: {
-    en: 'Mailjet accepted the keys but denied the sending (HTTP 403{code}).',
-    fr: 'Mailjet a accepté les clés mais refusé l’envoi (HTTP 403{code}).',
+    en: 'Mailjet accepted the keys but denied the sending (HTTP 403{code}). Nothing is sent before {time} (UTC).',
+    fr: 'Mailjet a accepté les clés mais refusé l’envoi (HTTP 403{code}). Rien n’est envoyé avant {time} (UTC).',
   },
   address_invalid: {
     en: 'Mailjet refused an address as invalid: nothing was sent.',

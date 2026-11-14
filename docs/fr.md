@@ -70,8 +70,10 @@ La clé secrète est gardée par Gladys dans sa base, jamais réaffichée, et en
   `mj-0015` identifiants erronés). Alors plus rien n’est envoyé avec ces clés tant qu’elles ne changent pas
   ou que le bouton Tester ne réussit pas (le bouton Tester essaie aussi des clés refusées, hors pause).
   Seuls 8 bits d’une empreinte salée sont gardés dans `/data`, jamais une clé. Pas un refus des clés : un
-  401 sans un tel code (vide, page d’un proxy, réponse coupée : le prochain e-mail réessaie), un 403
-  (expéditeur non validé, envoi refusé), une adresse ou un e-mail refusés (400).
+  401 sans un tel code (vide, page d’un proxy, réponse coupée), un 403 (expéditeur non validé, envoi
+  refusé), une adresse ou un e-mail refusés (400). Un 401 sans code et un 403 ne sont pas non plus
+  réessayés à chaque e-mail : ils posent la même pause qu’un 429 (60 secondes doublées jusqu’à 1 heure,
+  gardée dans `/data`, Tester compris) ; rien n’est retenu sur les clés.
 
 ## Statut
 

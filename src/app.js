@@ -58,6 +58,12 @@ import { MailjetError } from './mailjet.js';
 const sha256 = (text) => createHash('sha256').update(text).digest('hex');
 const credsOf = (cfg) => `${cfg.apiKey}\n${cfg.secretKey}`;
 export const fp8 = (salt, cfg) => createHmac('sha256', salt).update(credsOf(cfg)).digest()[0];
+// Answers that pause every path (Test included): slow down, server failing,
+// and the refusals that a new try would only repeat (a 401 without a Mailjet
+// key code, a 403): never hammered, never kept as a refusal of the keys.
+const PAUSING = new Set(['throttled', 'unavailable', 'unauthorized', 'sender', 'denied']);
+// Shown as the plain pause once it is set (their own text says the cause).
+const PAUSE_ONLY = new Set(['throttled', 'unavailable']);
 const isInt = (n, min, max) => Number.isInteger(n) && n >= min && n <= max;
 // Less than this left before the deadline: not sent (it could not be confirmed).
 const MIN_REQUEST_MS = 2_000;
@@ -639,7 +645,7 @@ export class MailjetApp {
       this.refused = { salt, fp: fp8(salt, cfg) };
       this.refusedFull = sha256(credsOf(cfg));
       this.succeeded = null;
-    } else if (kind === 'throttled' || kind === 'unavailable') {
+    } else if (PAUSING.has(kind)) {
       this.pauseStep = this.pauseStep ? Math.min(this.pauseStep * 2, PAUSE_MAX_MS) : PAUSE_MIN_MS;
       const asked = Number.isFinite(err.retryAfterMs)
         ? Math.min(err.retryAfterMs, RETRY_AFTER_MAX_MS)
@@ -661,17 +667,16 @@ export class MailjetApp {
 
   reasonOf(err) {
     const kind = err instanceof MailjetError ? err.kind : 'network';
-    if (kind === 'throttled' || kind === 'unavailable') return 'paused';
+    if (PAUSE_ONLY.has(kind)) return 'paused';
     if (kind === 'network' && err.sent === false) return 'network_not_sent';
     return kind;
   }
 
   varsOf(err) {
     const kind = err instanceof MailjetError ? err.kind : 'network';
-    if (kind === 'throttled' || kind === 'unavailable') {
-      return { time: this.clockTime(this.pausedFor()) };
-    }
+    if (PAUSE_ONLY.has(kind)) return { time: this.clockTime(this.pausedFor()) };
     return {
+      time: this.clockTime(this.pausedFor()),
       detail: err?.detail || 'HTTP 400',
       status: err?.status ?? '?',
       code: err?.code ? `, ${err.code}` : '',
@@ -687,7 +692,11 @@ export class MailjetApp {
     if (this.isRefused(cfg)) return { ok: false, key: 'refused' };
     const left = this.pausedFor();
     if (left > 0) {
-      return { ok: false, key: 'paused', vars: { time: this.clockTime(left) }, until: left };
+      // A 401 or a 403 behind the pause: its own text, with the end of the pause.
+      const key =
+        PAUSING.has(this.outcome) && !PAUSE_ONLY.has(this.outcome) ? this.outcome : 'paused';
+      const vars = { ...this.outcomeVars, time: this.clockTime(left) };
+      return { ok: false, key, vars, until: left };
     }
     const sends = this.recentSends();
     if (sends.length >= cfg.hourlyLimit) {
@@ -710,7 +719,7 @@ export class MailjetApp {
     }
     if (this.outcome === 'tested') return { ok: true, key: 'tested' };
     // A refusal lifted by new keys, a pause over: nothing known against the next e-mail.
-    if (['ready', 'refused', 'throttled', 'unavailable'].includes(this.outcome)) {
+    if (this.outcome === 'ready' || this.outcome === 'refused' || PAUSING.has(this.outcome)) {
       return { ok: true, key: 'ready' };
     }
     return { ok: false, key: this.outcome, vars: this.outcomeVars };

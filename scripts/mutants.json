@@ -220,5 +220,11 @@
     "file": "src/mailjet.js",
     "from": "if (response.status === 429 || response.status >= 500) {",
     "to": "if (false) {"
+  },
+  {
+    "name": "a 401 without code or a 403 not paused",
+    "file": "src/app.js",
+    "from": "const PAUSING = new Set(['throttled', 'unavailable', 'unauthorized', 'sender', 'denied']);",
+    "to": "const PAUSING = new Set(['throttled', 'unavailable']);"
   }
 ]
