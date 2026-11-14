@@ -1,67 +1,81 @@
-# Template de démonstration
+# Mailjet pour Gladys
 
-Ceci est la documentation utilisateur de l'intégration. Gladys ré-héberge ce
-fichier et affiche un lien **Documentation** permanent vers lui dans l'écran
-de configuration (dans la langue de l'utilisateur, avec l'anglais en repli) —
-c'est au moment de configurer que l'utilisateur en a le plus besoin. Gardez
-les courtes indications d'accueil dans les blocs `section` du `config_schema`
-du manifest ; mettez ici le pas-à-pas détaillé (captures d'écran, dépannage…).
+Intégration non officielle, sans lien avec Mailjet. Elle **envoie** des e-mails via votre compte Mailjet avec
+l’API Send v3.1 ; elle n’en lit jamais. Cette intégration n’a jamais été testée avec un vrai compte Mailjet :
+elle a été construite d’après la documentation officielle de Mailjet et testée sur de faux serveurs locaux.
+Les retours sont les bienvenus.
 
-## Ce que vous obtenez
+## Ce qui part, et quand
 
-Six appareils de démonstration apparaissent après l'installation : une
-station météo (vraies données Open-Meteo), un interrupteur, une lampe
-variable, une prise connectée avec mesure de puissance, un détecteur de
-mouvement et une caméra.
+Un e-mail ne part que par l’un de ces trois chemins :
 
-## Configuration
+1. **Un message de Gladys** à un utilisateur qui a saisi son adresse dans le bloc **Mon compte** de
+   l’intégration : l’action de scène « Envoyer un message », et les messages système de Gladys (mise à jour
+   faite, sauvegarde échouée, pile faible…) quand l’administrateur les dirige vers tous les canaux ou vers
+   celui-ci (paramètres système). Un utilisateur qui laisse l’adresse vide ne reçoit rien par e-mail. L’image
+   de caméra de l’action « Envoyer une image de caméra » est jointe (JPEG, PNG ou WebP, 2 Mo au plus).
+2. **L’action de scène « Envoyer un e-mail avec Mailjet »** : un e-mail en texte brut à une adresse, avec un
+   objet facultatif (sinon l’objet de la configuration). Sa sortie `message_id` est l’identifiant Mailjet de
+   l’e-mail.
+3. **Le bouton Tester**, en **mode bac à sable** de Mailjet : Mailjet vérifie les clés, l’expéditeur et
+   l’adresse et ne distribue rien (non compté dans le plafond horaire).
 
-1. Ouvrez l'onglet **Configuration** de l'intégration.
-2. Renseignez la **latitude** et la **longitude** que la station météo de
-   démonstration doit observer (Paris par défaut), et choisissez votre unité
-   de température. L'**intervalle de rafraîchissement** règle la fréquence
-   de lecture de la station météo et de la puissance de la prise : toutes
-   les 5 minutes par défaut, toutes les minutes au plus.
-3. Enregistrez : les appareils apparaissent dans l'onglet **Découverte**,
-   prêts à être ajoutés.
+Rien n’est envoyé au démarrage ni à intervalle régulier.
 
-Le réglage **Préférer la connexion locale** pilote la prise de
-démonstration : elle affiche en badge le canal réellement utilisé (local ou
-cloud), avec un point orange quand elle fonctionne en mode dégradé (local
-refusé, bascule cloud).
+## Mise en place
 
-## Actions
+1. Dans Mailjet, **Paramètres du compte → API REST → Gestion des clés API** : copiez la clé d’API et la clé
+   secrète.
+2. **Expéditeurs et domaines** : validez l’adresse de l’expéditeur (ou tout son domaine). Sans cela, Mailjet
+   refuse chaque e-mail (« pas l’adresse de l’expéditeur »).
+3. Dans Gladys, saisissez les clés, l’adresse de l’expéditeur, au besoin le nom de l’expéditeur, l’objet des
+   messages de Gladys et le plafond horaire ; enregistrez, puis cliquez sur **Tester**.
+4. Chaque utilisateur saisit son adresse dans **Mon compte**.
 
-- **Tester le fournisseur météo** — effectue une requête en direct vers
-  Open-Meteo et affiche la température et l'humidité actuelles sous le
-  bouton.
-- **Identifier un appareil** — choisissez un de vos appareils dans la liste
-  et il se signale (la lampe de démonstration « clignote » dans les logs).
+La clé secrète est gardée par Gladys dans sa base, jamais réaffichée, et envoyée seulement à Mailjet.
 
-## Scènes
+## Ce qui protège votre compte et votre forfait
 
-L'intégration ajoute ses propres cartes à l'éditeur de scènes (Gladys 5.1
-ou plus récent), dans la catégorie **Intégrations** :
+- **Plafond horaire** (20 par défaut, de 1 à 200) : au plus ce nombre d’e-mails sur 60 minutes glissantes,
+  messages de Gladys et actions de scène ensemble. Au-delà, rien n’est envoyé et l’action échoue avec l’heure
+  du prochain e-mail possible. Le compte est gardé dans `/data` aux redémarrages. Un e-mail est compté avant
+  de partir ; il n’est décompté que si Mailjet a répondu qu’il le refusait (rien envoyé).
+- **Jamais envoyé deux fois** : l’intégration ne renvoie aucun e-mail, quoi qu’il arrive (pas de réponse,
+  connexion coupée, erreur du serveur). Quand Mailjet n’a pas confirmé, l’action échoue avec « il a pu être
+  envoyé, il n’est donc pas renvoyé ».
+- **Messages de Gladys** : Gladys attend 5 secondes une réponse. Si Mailjet est plus lent, l’intégration
+  répond au bout de 3,5 secondes « sans réponse pour l’instant » et laisse la requête se terminer (20
+  secondes au plus) ; le statut dit ensuite comment cela s’est passé. Un e-mail qui attend encore son tour à
+  ce moment-là est abandonné et ne part pas.
+- **Au plus 2 e-mails à la fois**, 10 en attente ; au-delà, « trop d’e-mails à la fois » et rien n’est
+  envoyé.
+- **Ralentir** : après un 429 (trop de requêtes) ou une erreur du serveur Mailjet, rien n’est envoyé pendant
+  60 secondes, durée doublée à chaque nouvel échec jusqu’à 1 heure (un `Retry-After` de Mailjet est suivi
+  jusqu’à 6 heures), Tester compris. La pause est gardée dans `/data`.
+- **Clés refusées** (HTTP 401) : plus rien n’est envoyé avec ces clés tant qu’elles ne changent pas ou que le
+  bouton Tester ne réussit pas (le bouton Tester essaie aussi des clés refusées, hors pause). Seuls 8 bits d’une empreinte salée sont
+  gardés dans `/data`, jamais une clé. Un 403 (expéditeur non validé, envoi refusé) ou une adresse refusée
+  n’est pas un refus des clés.
 
-- **Mouvement détecté** (déclencheur) — lance la scène quand un détecteur
-  de démonstration voit bouger quelque chose. Choisissez éventuellement le
-  détecteur et ce qui a bougé (personne, animal) ; laissés vides, toute
-  détection correspond. Les actions suivantes peuvent lire ce qui a bougé
-  avec `{{triggerEvent.data.target}}`.
-- **Identifier un appareil** (action) — fait se signaler l'appareil choisi.
-  Elle indique si l'appareil a pu se signaler, pour que les actions
-  suivantes puissent en dépendre.
+## Statut
 
-## Tableau de bord
+| Statut                                                                  | Sens                                                                                                  |
+| ----------------------------------------------------------------------- | ----------------------------------------------------------------------------------------------------- |
+| Prêt                                                                    | Clés et expéditeur saisis ; vérifiés par Mailjet au premier e-mail ou avec le bouton Tester.          |
+| Mailjet a accepté le dernier e-mail                                     | Avec le compte de la dernière heure et le plafond.                                                    |
+| Mailjet a accepté les clés et l’expéditeur                              | Le dernier test a réussi (rien n’a été distribué).                                                    |
+| Clés refusées / expéditeur non validé / pause / plafond horaire atteint | Rien n’est envoyé ; le texte dit jusqu’à quand ou quoi changer.                                       |
+| Compteur horaire non enregistré                                         | `/data` est non lu, en lecture seule ou lent : le plafond ne tient que jusqu’au prochain redémarrage. |
 
-Ajoutez le widget **État de la démo** à un tableau de bord : il affiche en
-direct la température de la station météo et la puissance de la prise du
-bureau, la connexion utilisée par la prise (en orange si dégradée) et la
-position observée. Son bouton **Identifier la lampe** fait se signaler la
-lampe de démonstration.
+## Vie privée
 
-## Dépannage
+Les journaux montrent les adresses masquées (`j***@e***.com`) ; les clés, objets et textes ne sont jamais
+journalisés, mis dans le statut ni écrits dans `/data`. `/data/mailjet.json` contient les heures des e-mails
+de la dernière heure, la pause et l’empreinte des clés refusées.
 
-L'intégration journalise tout ce qu'elle fait : consultez les logs de
-l'intégration depuis l'interface Gladys (ou `docker logs` sur l'hôte) avec
-`LOG_LEVEL=debug` pour le détail complet.
+## Limites
+
+- Texte brut seulement (le Markdown des messages de Gladys est envoyé tel quel) ; un destinataire par action
+  de scène.
+- Les e-mails ne sont pas reçus : c’est un canal d’envoi seul.
+- Les quotas d’envoi de votre forfait Mailjet s’appliquent en plus du plafond horaire.

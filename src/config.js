@@ -1,45 +1,115 @@
 // -----------------------------------------------------------------------------
-// Integration configuration.
-//
-// The configuration is filled in by the user in Gladys, from the `config_schema`
-// declared in `gladys-assistant-integration.json`. The SDK fetches it for you
-// (`gladys.getConfig()`) and notifies you of every change through
-// `gladys.onConfigUpdated()`.
-//
-// This module only provides defaults and normalizes the received object, so the
-// rest of the code never has to deal with `undefined`.
+// Configuration: the values of the `config_schema`, checked. `readConfig`
+// never throws: it returns `{ ok: true, ... }` or `{ ok: false, reason }`, the
+// reason being an i18n key (an invalid value is never shown back).
+// Also the address checks and the masking used by the logs.
 // -----------------------------------------------------------------------------
 
-// Defaults: they MUST stay consistent with the `default` values declared in the
-// `config_schema` of the manifest.
-export const DEFAULT_CONFIG = {
-  latitude: 48.8566, // Paris
-  longitude: 2.3522,
-  unit: 'celsius', // 'celsius' | 'fahrenheit'
-  // Seconds between two reads of the polled sensors. Gladys polls at most once
-  // a minute: slower intervals are applied by skipping polls (see
-  // createPoller in src/devices/index.js).
-  poll_frequency: 300,
-  // Reserved key (NOT in config_schema): because the manifest declares both
-  // 'local' and 'cloud' in its `transports` field, Gladys shows a standard
-  // "Prefer the local connection" toggle and sends the user's choice here.
-  // Read-only for the integration; defaults to true.
-  GLADYS_PREFER_LOCAL: true,
+import {
+  DEFAULT_HOURLY_LIMIT,
+  MAX_EMAIL,
+  MAX_HOURLY_LIMIT,
+  MAX_NAME,
+  MAX_SUBJECT,
+  MIN_HOURLY_LIMIT,
+} from './constants.js';
+
+export const DEFAULTS = {
+  sender_name: 'Gladys',
+  default_subject: 'Gladys',
+  hourly_limit: DEFAULT_HOURLY_LIMIT,
 };
 
+// A Mailjet API key and secret key: 32 hexadecimal characters today; letters
+// and digits only, whatever the length Mailjet moves to.
+const KEY = /^[A-Za-z0-9]{16,128}$/;
+
+// An address: a local part without space, control, quote or bracket, and a
+// domain of letters, digits and hyphens with at least one dot (no IP literal).
+const EMAIL =
+  // eslint-disable-next-line no-control-regex -- control characters are what it refuses
+  /^[^\s@<>()",;:\\[\]\u0000-\u001f\u007f]{1,64}@(?=.{1,253}$)[A-Za-z0-9](?:[A-Za-z0-9-]{0,61}[A-Za-z0-9])?(?:\.[A-Za-z0-9](?:[A-Za-z0-9-]{0,61}[A-Za-z0-9])?)+$/;
+
+const text = (value) => (typeof value === 'string' ? value.trim() : '');
+
+/** The address, trimmed, or null when it is not one. */
+export function parseEmail(value) {
+  const v = text(value);
+  if (!v || v.length > MAX_EMAIL || !EMAIL.test(v)) return null;
+  // The last label is a top-level domain: letters only.
+  if (!/\.[A-Za-z]{2,63}$/.test(v)) return null;
+  return v;
+}
+
+/** An address as the logs show it: never complete ("j***@e***.com"). */
+export function maskEmail(value) {
+  const v = typeof value === 'string' ? value : '';
+  const at = v.lastIndexOf('@');
+  if (at < 1) return '***';
+  const domain = v.slice(at + 1);
+  const dot = domain.lastIndexOf('.');
+  const tld = dot > 0 ? domain.slice(dot) : '';
+  return `${v[0]}***@${domain[0] ?? ''}***${tld}`;
+}
+
+/** One line: controls and line breaks become spaces, at most `max` characters. */
+export function oneLine(value, max) {
+  return (
+    String(value ?? '')
+      // eslint-disable-next-line no-control-regex -- control characters are what it removes
+      .replace(/[\u0000-\u001f\u007f\u2028\u2029]/g, ' ')
+      .replace(/\s+/g, ' ')
+      .trim()
+      .slice(0, max)
+      .trim()
+  );
+}
+
 /**
- * Merge the user config with the defaults.
- * @param {Record<string, unknown>} raw config returned by the SDK
+ * @param {Record<string, unknown>} raw the values from Gladys
  */
-export function normalizeConfig(raw = {}) {
+export function readConfig(raw = {}) {
+  const config = raw && typeof raw === 'object' ? raw : {};
+  const apiKey = text(config.api_key);
+  const secretKey = text(config.secret_key);
+  if (!apiKey && !secretKey) return { ok: false, reason: 'not_configured' };
+  if (!apiKey) return { ok: false, reason: 'api_key_missing' };
+  if (!secretKey) return { ok: false, reason: 'secret_missing' };
+  if (!KEY.test(apiKey)) return { ok: false, reason: 'api_key_invalid' };
+  if (!KEY.test(secretKey)) return { ok: false, reason: 'secret_invalid' };
+  if (!text(config.sender_email)) return { ok: false, reason: 'sender_missing' };
+  const senderEmail = parseEmail(config.sender_email);
+  if (!senderEmail) return { ok: false, reason: 'sender_invalid' };
+
+  const senderName =
+    config.sender_name === undefined || config.sender_name === null
+      ? DEFAULTS.sender_name
+      : oneLine(config.sender_name, MAX_NAME);
+  const subject = oneLine(config.default_subject, MAX_SUBJECT) || DEFAULTS.default_subject;
+
+  let limit = DEFAULTS.hourly_limit;
+  const rawLimit = config.hourly_limit;
+  if (rawLimit !== undefined && rawLimit !== null && rawLimit !== '') {
+    // Strict: '' or a decimal is not a number of e-mails.
+    const n = typeof rawLimit === 'number' ? rawLimit : Number(text(rawLimit));
+    if (
+      !Number.isInteger(n) ||
+      (typeof rawLimit === 'string' && !/^\d+$/.test(text(rawLimit))) ||
+      n < MIN_HOURLY_LIMIT ||
+      n > MAX_HOURLY_LIMIT
+    ) {
+      return { ok: false, reason: 'limit_invalid' };
+    }
+    limit = n;
+  }
+
   return {
-    ...DEFAULT_CONFIG,
-    ...raw,
-    // Force the types: config may arrive as strings from a form.
-    latitude: Number(raw.latitude ?? DEFAULT_CONFIG.latitude),
-    longitude: Number(raw.longitude ?? DEFAULT_CONFIG.longitude),
-    poll_frequency: Number(raw.poll_frequency ?? DEFAULT_CONFIG.poll_frequency),
-    // The preference is a boolean; anything but an explicit false means true.
-    GLADYS_PREFER_LOCAL: raw.GLADYS_PREFER_LOCAL !== false,
+    ok: true,
+    apiKey,
+    secretKey,
+    senderEmail,
+    senderName,
+    subject,
+    hourlyLimit: limit,
   };
 }

@@ -1,0 +1,188 @@
+[
+  {
+    "name": "refused keys sent again",
+    "file": "src/app.js",
+    "from": "if (!allowRefused && this.isRefused(cfg)) throw",
+    "to": "if (false) throw"
+  },
+  {
+    "name": "no pause after a 429 or 5xx",
+    "file": "src/app.js",
+    "from": "if (left > 0) throw new SendError('paused'",
+    "to": "if (false) throw new SendError('paused'"
+  },
+  {
+    "name": "no hourly limit",
+    "file": "src/app.js",
+    "from": "throw new SendError('limit_reached', {",
+    "to": "if (false) throw new SendError('limit_reached', {"
+  },
+  {
+    "name": "hourly window shorter than 60 minutes",
+    "file": "src/app.js",
+    "from": "this.sends = this.sends.filter((at) => at > since);",
+    "to": "this.sends = this.sends.filter((at) => at > since + 60000);"
+  },
+  {
+    "name": "not counted before leaving",
+    "file": "src/app.js",
+    "from": "this.sends.push(mark);",
+    "to": ""
+  },
+  {
+    "name": "a refused e-mail stays counted",
+    "file": "src/app.js",
+    "from": "if (err instanceof MailjetError && err.sent === false) this.uncount(mark);",
+    "to": ""
+  },
+  {
+    "name": "an e-mail that may have left given back",
+    "file": "src/app.js",
+    "from": "err.sent === false) this.uncount(mark);",
+    "to": "err.sent !== true) this.uncount(mark);"
+  },
+  {
+    "name": "limit not checked again after the queue",
+    "file": "src/app.js",
+    "from": "      this.gate(cfg, { allowRefused: sandbox, counted });\n",
+    "to": "\n"
+  },
+  {
+    "name": "message ack after the 5 s of Gladys",
+    "file": "src/app.js",
+    "from": "Math.max(0, MESSAGE_ACK_MS - (this.now() - started))",
+    "to": "Math.max(0, MESSAGE_ACK_MS * 2 - (this.now() - started))"
+  },
+  {
+    "name": "a message given up still sent later",
+    "file": "src/app.js",
+    "from": "      ticket.cancelled = true;\n",
+    "to": "\n"
+  },
+  {
+    "name": "Test not in sandbox mode",
+    "file": "src/app.js",
+    "from": "if (sandbox) body.SandboxMode = true;",
+    "to": ""
+  },
+  {
+    "name": "Test counted in the hourly limit",
+    "file": "src/app.js",
+    "from": "const counted = !sandbox;",
+    "to": "const counted = true;"
+  },
+  {
+    "name": "a future time of /data counted",
+    "file": "src/app.js",
+    "from": "ago >= 0 && ago < HOUR_MS",
+    "to": "ago < HOUR_MS"
+  },
+  {
+    "name": "pause of /data forgotten",
+    "file": "src/app.js",
+    "from": "this.pauseUntil = Math.max(this.pauseUntil, now + left);",
+    "to": ""
+  },
+  {
+    "name": "refusal of /data forgotten",
+    "file": "src/app.js",
+    "from": "if (!lifted) this.refused = { salt: refused.salt, fp: refused.fp };",
+    "to": ""
+  },
+  {
+    "name": "pause never doubled",
+    "file": "src/app.js",
+    "from": "Math.min(this.pauseStep * 2, PAUSE_MAX_MS)",
+    "to": "PAUSE_MIN_MS"
+  },
+  {
+    "name": "Retry-After not capped",
+    "file": "src/app.js",
+    "from": "Math.min(err.retryAfterMs, RETRY_AFTER_MAX_MS)",
+    "to": "err.retryAfterMs"
+  },
+  {
+    "name": "/data written before it was read",
+    "file": "src/app.js",
+    "from": "if (!this.storeReady) return Promise.resolve(false);",
+    "to": ""
+  },
+  {
+    "name": "/data read again too fast",
+    "file": "src/app.js",
+    "from": "        }, STORE_RETRY_MS);",
+    "to": "        }, 1000);"
+  },
+  {
+    "name": "getConfig retried without spacing",
+    "file": "src/app.js",
+    "from": "this.refreshConfig(Math.min(delay * 2, CONFIG_RETRY_MAX_MS));",
+    "to": "this.refreshConfig(delay);"
+  },
+  {
+    "name": "request not bounded to 20 s",
+    "file": "src/app.js",
+    "from": "const left = Math.min(REQUEST_TIMEOUT_MS, deadline - this.now());",
+    "to": "const left = deadline - this.now() + 10000;"
+  },
+  {
+    "name": "full address logged",
+    "file": "src/config.js",
+    "from": "return `${v[0]}***@${domain[0] ?? ''}***${tld}`;",
+    "to": "return v;"
+  },
+  {
+    "name": "a 403 taken as a refusal of the keys",
+    "file": "src/mailjet.js",
+    "from": "throw new MailjetError(sender ? 'sender' : 'denied'",
+    "to": "throw new MailjetError('refused'"
+  },
+  {
+    "name": "any 401 taken as a refusal",
+    "file": "src/mailjet.js",
+    "from": "text.trim() === '' || codes.some((c) => KEY_CODES.has(c)) || data?.StatusCode === 401;",
+    "to": "true;"
+  },
+  {
+    "name": "redirect followed",
+    "file": "src/mailjet.js",
+    "from": "redirect: 'manual',",
+    "to": "redirect: 'follow',"
+  },
+  {
+    "name": "answer read without bound",
+    "file": "src/mailjet.js",
+    "from": "if (size > max) {",
+    "to": "if (false) {"
+  },
+  {
+    "name": "Retry-After date against the local clock",
+    "file": "src/mailjet.js",
+    "from": "return Math.max(0, until - at);",
+    "to": "return Math.max(0, until - Date.now());"
+  },
+  {
+    "name": "a 200 without success taken as sent",
+    "file": "src/mailjet.js",
+    "from": "if (first?.Status === 'success') return",
+    "to": "if (true) return"
+  },
+  {
+    "name": "a refused connection taken as maybe sent",
+    "file": "src/mailjet.js",
+    "from": "sent: NOT_SENT.has(errCode) ? false : 'maybe',",
+    "to": "sent: 'maybe',"
+  },
+  {
+    "name": "line breaks kept in the subject",
+    "file": "src/config.js",
+    "from": ".replace(/\\s+/g, ' ')",
+    "to": ""
+  },
+  {
+    "name": "status left stale after a pause",
+    "file": "src/app.js",
+    "from": "this.scheduleStatus(until);",
+    "to": ""
+  }
+]

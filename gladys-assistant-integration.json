@@ -1,177 +1,185 @@
 {
   "manifest_version": 1,
-  "type": "device",
-  "name": "Demo Devices Template",
+  "type": "communication",
+  "name": "Mailjet",
   "description": {
-    "en": "Starter template showing sensors, a switch, a dimmable light and a smart plug.",
-    "fr": "Template de démarrage : capteurs, interrupteur, lampe variable et prise connectée."
+    "en": "Unofficial: Gladys messages and scene e-mails sent through your Mailjet account.",
+    "fr": "Non officiel : messages de Gladys et e-mails de scènes envoyés via votre compte Mailjet."
   },
-  "version": "1.0.0",
-  "docker_image": "ghcr.io/gladysassistant/integration-template-js:1.0.0",
+  "version": "0.1.0",
+  "docker_image": "ghcr.io/lm1lc3n7/gladys-mailjet:0.1.0",
   "gladys_version": ">=5.1.0",
-  "cover_image": "https://raw.githubusercontent.com/GladysAssistant/integration-template-js/master/cover.png",
-  "categories": ["lighting", "security", "environment"],
-  "transports": ["local", "cloud"],
+  "cover_image": "https://raw.githubusercontent.com/LM1LC3N7/gladys-mailjet/main/cover.png",
+  "categories": ["notifications"],
+  "transports": ["cloud"],
+  "messaging": { "receive": false },
+  "contact_schema": [
+    {
+      "key": "email",
+      "type": "string",
+      "required": true,
+      "label": { "en": "Your e-mail address", "fr": "Votre adresse e-mail" },
+      "description": {
+        "en": "The Gladys messages meant for you (the “Send a message” scene action, and the system messages if the administrator routes them here) arrive at this address. Empty: nothing is sent to you by e-mail.",
+        "fr": "Les messages de Gladys qui vous sont destinés (l’action de scène « Envoyer un message », et les messages système si l’administrateur les dirige ici) arrivent à cette adresse. Vide : rien ne vous est envoyé par e-mail."
+      },
+      "placeholder": { "en": "me@example.com", "fr": "moi@example.com" }
+    }
+  ],
   "config_schema": [
     {
       "key": "intro",
       "type": "section",
-      "label": { "en": "Getting started", "fr": "Pour commencer" },
+      "label": { "en": "Mailjet in Gladys", "fr": "Mailjet dans Gladys" },
       "description": {
-        "en": "The demo weather station reads real data from the free Open-Meteo API: pick the coordinates to observe. No account, no API key.",
-        "fr": "La station météo de démonstration lit de vraies données via l'API gratuite Open-Meteo : choisissez les coordonnées à observer. Pas de compte, pas de clé d'API."
+        "en": "Unofficial integration, not affiliated with Mailjet. It only sends e-mails, never reads any: the Gladys messages to each user who entered an address in “My account”, and the “Send an e-mail with Mailjet” scene action. Create the API keys in Mailjet (Account settings, REST API, API key management), validate the sender address or its domain (Senders & Domains), then click “Test”: Mailjet checks everything in sandbox mode and delivers nothing. Every e-mail counts in your Mailjet plan; the hourly limit below stops a runaway scene.",
+        "fr": "Intégration non officielle, sans lien avec Mailjet. Elle envoie des e-mails, n’en lit jamais : les messages de Gladys à chaque utilisateur qui a saisi une adresse dans « Mon compte », et l’action de scène « Envoyer un e-mail avec Mailjet ». Créez les clés d’API dans Mailjet (Paramètres du compte, API REST, gestion des clés API), validez l’adresse de l’expéditeur ou son domaine (Expéditeurs et domaines), puis cliquez sur « Tester » : Mailjet vérifie tout en mode bac à sable et ne distribue rien. Chaque e-mail compte dans votre forfait Mailjet ; le plafond horaire ci-dessous arrête une scène qui s’emballe."
       },
       "links": [
         {
-          "url": "https://open-meteo.com/en/docs",
-          "label": { "en": "Open-Meteo documentation", "fr": "Documentation Open-Meteo" }
+          "url": "https://app.mailjet.com/account/apikeys",
+          "label": { "en": "Mailjet API keys", "fr": "Clés d’API Mailjet" }
+        },
+        {
+          "url": "https://app.mailjet.com/account/sender",
+          "label": { "en": "Mailjet senders and domains", "fr": "Expéditeurs et domaines Mailjet" }
+        },
+        {
+          "url": "https://github.com/LM1LC3N7/gladys-mailjet/blob/main/docs/en.md",
+          "label": { "en": "Guide (English)", "fr": "Guide (anglais)" }
+        },
+        {
+          "url": "https://github.com/LM1LC3N7/gladys-mailjet/blob/main/docs/fr.md",
+          "label": { "en": "Guide (French)", "fr": "Guide (français)" }
         }
       ]
     },
     {
-      "key": "latitude",
-      "type": "number",
-      "label": { "en": "Latitude", "fr": "Latitude" },
-      "description": {
-        "en": "Latitude used for the demo weather sensor.",
-        "fr": "Latitude utilisée par le capteur météo de démonstration."
-      },
-      "placeholder": { "en": "e.g. 48.8566", "fr": "ex. 48.8566" },
+      "key": "api_key",
+      "type": "string",
       "required": true,
-      "default": 48.8566,
-      "min": -90,
-      "max": 90
+      "label": { "en": "API key", "fr": "Clé d’API" },
+      "description": {
+        "en": "The public part of the key pair (32 characters), sent only to Mailjet.",
+        "fr": "La partie publique de la paire de clés (32 caractères), envoyée seulement à Mailjet."
+      }
     },
     {
-      "key": "longitude",
-      "type": "number",
-      "label": { "en": "Longitude", "fr": "Longitude" },
-      "description": {
-        "en": "Longitude used for the demo weather sensor.",
-        "fr": "Longitude utilisée par le capteur météo de démonstration."
-      },
-      "placeholder": { "en": "e.g. 2.3522", "fr": "ex. 2.3522" },
+      "key": "secret_key",
+      "type": "secret",
       "required": true,
-      "default": 2.3522,
-      "min": -180,
-      "max": 180
-    },
-    {
-      "key": "unit",
-      "type": "select",
-      "label": { "en": "Temperature unit", "fr": "Unité de température" },
-      "required": false,
-      "default": "celsius",
-      "options": [
-        { "value": "celsius", "label": { "en": "Celsius", "fr": "Celsius" } },
-        { "value": "fahrenheit", "label": { "en": "Fahrenheit", "fr": "Fahrenheit" } }
-      ]
-    },
-    {
-      "key": "poll_frequency",
-      "type": "number",
-      "label": { "en": "Refresh interval (s)", "fr": "Intervalle de rafraîchissement (s)" },
+      "label": { "en": "Secret key", "fr": "Clé secrète" },
       "description": {
-        "en": "How often sensors are polled, in seconds (one minute minimum).",
-        "fr": "Fréquence d'interrogation des capteurs, en secondes (une minute minimum)."
+        "en": "The private part of the key pair. Kept by Gladys in its database, never shown again, sent only to Mailjet.",
+        "fr": "La partie privée de la paire de clés. Gardée par Gladys dans sa base, jamais réaffichée, envoyée seulement à Mailjet."
+      }
+    },
+    {
+      "key": "sender_email",
+      "type": "string",
+      "required": true,
+      "label": { "en": "Sender address", "fr": "Adresse de l’expéditeur" },
+      "description": {
+        "en": "Must be validated in Mailjet (the address or its domain), otherwise Mailjet refuses every e-mail.",
+        "fr": "Doit être validée chez Mailjet (l’adresse ou son domaine), sinon Mailjet refuse chaque e-mail."
       },
+      "placeholder": { "en": "home@example.com", "fr": "maison@example.com" }
+    },
+    {
+      "key": "sender_name",
+      "type": "string",
       "required": false,
-      "default": 300,
-      "min": 60,
-      "max": 3600
+      "default": "Gladys",
+      "label": { "en": "Sender name", "fr": "Nom de l’expéditeur" }
+    },
+    {
+      "key": "default_subject",
+      "type": "string",
+      "required": false,
+      "default": "Gladys",
+      "label": { "en": "Subject of the Gladys messages", "fr": "Objet des messages de Gladys" },
+      "description": {
+        "en": "Also used by the scene action when it gives no subject.",
+        "fr": "Aussi utilisé par l’action de scène quand elle ne donne pas d’objet."
+      }
+    },
+    {
+      "key": "hourly_limit",
+      "type": "number",
+      "required": false,
+      "default": 20,
+      "min": 1,
+      "max": 200,
+      "label": { "en": "Hourly limit of e-mails", "fr": "Plafond horaire d’e-mails" },
+      "description": {
+        "en": "At most this many e-mails in any 60 minutes (Gladys messages and scene actions together, Test excluded); beyond, nothing is sent and the action fails. Kept across restarts.",
+        "fr": "Au plus ce nombre d’e-mails sur 60 minutes glissantes (messages de Gladys et actions de scène ensemble, Tester exclu) ; au-delà, rien n’est envoyé et l’action échoue. Conservé aux redémarrages."
+      }
     }
   ],
   "actions": [
     {
-      "key": "test_weather",
-      "label": { "en": "Test the weather provider", "fr": "Tester le fournisseur météo" },
-      "timeout_seconds": 30
-    },
-    {
-      "key": "identify",
-      "label": { "en": "Identify a device", "fr": "Identifier un appareil" },
-      "fields": [
-        {
-          "key": "device",
-          "type": "select",
-          "source": "devices",
-          "label": { "en": "Device", "fr": "Appareil" },
-          "required": true
-        }
-      ]
-    }
-  ],
-  "scene_triggers": [
-    {
-      "key": "motion_detected",
-      "label": { "en": "Motion detected", "fr": "Mouvement détecté" },
+      "key": "test_connection",
+      "timeout_seconds": 30,
+      "label": { "en": "Test", "fr": "Tester" },
       "description": {
-        "en": "A demo motion sensor saw a person or an animal move.",
-        "fr": "Un détecteur de démonstration a vu bouger une personne ou un animal."
+        "en": "Sends a test e-mail in Mailjet sandbox mode with the saved settings: Mailjet checks the keys, the sender and the address, and delivers nothing.",
+        "fr": "Envoie un e-mail de test en mode bac à sable de Mailjet avec les réglages enregistrés : Mailjet vérifie les clés, l’expéditeur et l’adresse, et ne distribue rien."
       },
       "fields": [
         {
-          "key": "device",
-          "type": "select",
-          "source": "devices",
-          "label": { "en": "Sensor", "fr": "Détecteur" }
-        },
-        {
-          "key": "target",
-          "type": "multi_select",
-          "label": { "en": "What moved", "fr": "Ce qui a bougé" },
-          "options": [
-            { "value": "person", "label": { "en": "Person", "fr": "Personne" } },
-            { "value": "animal", "label": { "en": "Animal", "fr": "Animal" } }
-          ]
-        }
-      ],
-      "variables": [
-        {
-          "key": "target",
+          "key": "to",
           "type": "string",
-          "label": { "en": "What moved", "fr": "Ce qui a bougé" }
+          "required": false,
+          "label": {
+            "en": "Recipient (empty: the sender address)",
+            "fr": "Destinataire (vide : l’adresse de l’expéditeur)"
+          },
+          "placeholder": { "en": "me@example.com", "fr": "moi@example.com" }
         }
       ]
     }
   ],
   "scene_actions": [
     {
-      "key": "identify_device",
-      "label": { "en": "Identify a device", "fr": "Identifier un appareil" },
+      "key": "send_email",
+      "label": { "en": "Send an e-mail with Mailjet", "fr": "Envoyer un e-mail avec Mailjet" },
       "description": {
-        "en": "Make a device signal itself (the demo light blinks).",
-        "fr": "Fait se signaler un appareil (la lampe de démonstration clignote)."
+        "en": "Sends one plain-text e-mail to one address, within the hourly limit. Never sent twice: when Mailjet does not confirm, the action fails without sending again.",
+        "fr": "Envoie un e-mail en texte brut à une adresse, dans la limite du plafond horaire. Jamais envoyé deux fois : si Mailjet ne confirme pas, l’action échoue sans renvoyer."
       },
-      "timeout_seconds": 15,
+      "timeout_seconds": 30,
       "fields": [
         {
-          "key": "device",
-          "type": "select",
-          "source": "devices",
-          "label": { "en": "Device", "fr": "Appareil" },
-          "required": true
+          "key": "to",
+          "type": "string",
+          "required": true,
+          "label": { "en": "Recipient address", "fr": "Adresse du destinataire" },
+          "placeholder": { "en": "me@example.com", "fr": "moi@example.com" }
+        },
+        {
+          "key": "subject",
+          "type": "string",
+          "required": false,
+          "label": {
+            "en": "Subject (empty: the subject of the configuration)",
+            "fr": "Objet (vide : l’objet de la configuration)"
+          }
+        },
+        {
+          "key": "text",
+          "type": "string",
+          "required": true,
+          "label": { "en": "Text", "fr": "Texte" }
         }
       ],
       "outputs": [
         {
-          "key": "signalled",
-          "type": "boolean",
-          "label": { "en": "Device signalled", "fr": "Appareil signalé" }
+          "key": "message_id",
+          "type": "string",
+          "label": { "en": "Mailjet message id", "fr": "Identifiant Mailjet du message" }
         }
       ]
-    }
-  ],
-  "widgets": [
-    {
-      "key": "demo_status",
-      "label": { "en": "Demo status", "fr": "État de la démo" },
-      "description": {
-        "en": "Live temperature and plug power, plug connection and observed location.",
-        "fr": "Température et puissance en direct, connexion de la prise, position observée."
-      },
-      "icon": "activity",
-      "action_timeout_seconds": 15
     }
   ]
 }

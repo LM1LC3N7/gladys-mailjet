@@ -12,47 +12,17 @@ the notes of the version's GitHub Release.
 
 ### Added
 
-- A working example of scene triggers, scene actions and dashboard widgets
-  (Gladys 5.1.0 or later).
-- `CHANGELOG.md`, rolled by the Release workflow.
-- A GitHub Release for every version, with its changelog section as notes: the
-  Gladys Supervision page links each version to the repository's releases.
-- CI runs the tests on Node 22 and 24, and builds the Docker image.
-- Dependabot keeps the npm dependencies and the GitHub Actions up to date.
-- `SECURITY.md` (how to report a vulnerability) and `CLAUDE.md` (project rules
-  for contributors and coding assistants).
-- Manifest tests: `version` matches `package.json`, `docker_image` is tagged
-  with it, descriptions hold 10 to 100 characters, placeholders are
-  multi-language objects.
-- The latitude and longitude fields show an example value as placeholder.
-
-### Changed
-
-- Node.js 22 or later is required (Node 20 is end-of-life).
-- Integration SDK 0.16.0. The tests now run against the fake Gladys of the
-  SDK, which refuses the payloads Gladys refuses. A device published with a
-  `poll_frequency` is now polled without `should_poll: true` on a recent
-  core (an explicit `should_poll: false` opts out); the template keeps the
-  field explicit for the older cores.
-- The refresh interval is one minute minimum, the fastest Gladys polls a
-  device. The plug's power is only sent when it changes, and every 30
-  minutes otherwise.
-
-### Fixed
-
-- Gladys refused the devices of the Discovery tab: the weather station and
-  the plug declared their poll frequency in seconds instead of one of the
-  values Gladys accepts, and were never polled. They now poll every minute,
-  and the readings follow the refresh interval of the configuration.
-
-- The release commit no longer fails `npm run format:check`: the Release
-  workflow updates the manifest `version` and `docker_image` in place instead
-  of re-printing the whole file with `jq`.
-- The integration can write to `/data`: the image creates the directory owned
-  by the `node` user, a new Docker volume was owned by root.
-- A sub-container running the integration's own image follows it to the new
-  tag at each release, as well as in the manifest of the build summary: it kept
-  the previous tag, which may not exist on the registry. Sub-containers on a
-  third-party image (a broker, a database...) keep theirs.
-
-[Unreleased]: https://github.com/GladysAssistant/integration-template-js/commits/main
+- First version: a send-only e-mail channel through the Mailjet Send API v3.1
+  (type `communication`, Gladys 5.1.0+), with the user's own API keys and a
+  validated sender.
+- Gladys messages to the address each user enters in "My account" (camera
+  image attached); a "Send an e-mail with Mailjet" scene action (one address,
+  optional subject, outputs the Mailjet message id).
+- Test button in Mailjet sandbox mode: keys, sender and address checked,
+  nothing delivered.
+- Guards: an hourly limit (20 by default, 1 to 200) kept in `/data`; never an
+  e-mail sent twice; at most 2 e-mails at once; a pause after a 429 or a
+  server error (60 s doubled up to 1 h, `Retry-After` up to 6 h) kept across
+  a restart; refused keys never sent again until they change or the Test
+  button succeeds.
+- Addresses masked in the logs; no key, subject or text logged or kept.
