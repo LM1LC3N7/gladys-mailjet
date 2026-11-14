@@ -73,7 +73,8 @@ La clé secrète est gardée par Gladys dans sa base, jamais réaffichée, et en
   401 sans un tel code (vide, page d’un proxy, réponse coupée), un 403 (expéditeur non validé, envoi
   refusé), une adresse ou un e-mail refusés (400). Un 401 sans code et un 403 ne sont pas non plus
   réessayés à chaque e-mail : ils posent la même pause qu’un 429 (60 secondes doublées jusqu’à 1 heure,
-  gardée dans `/data`, Tester compris) ; rien n’est retenu sur les clés.
+  gardée dans `/data`, Tester compris) ; rien n’est retenu sur les clés. Enregistrer d’autres clés ou une autre adresse
+  d’expéditeur lève aussitôt une telle pause (une pause 429 ou 5xx reste).
 
 ## Statut
 

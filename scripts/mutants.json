@@ -8,8 +8,8 @@
   {
     "name": "no pause after a 429 or 5xx",
     "file": "src/app.js",
-    "from": "if (left > 0) throw new SendError('paused'",
-    "to": "if (false) throw new SendError('paused'"
+    "from": "      const { key, vars } = this.pauseReason(left);\n      throw new SendError(key, vars);",
+    "to": "      void key, vars;"
   },
   {
     "name": "no hourly limit",
@@ -80,7 +80,7 @@
   {
     "name": "pause of /data forgotten",
     "file": "src/app.js",
-    "from": "this.pauseUntil = Math.max(this.pauseUntil, now + left);",
+    "from": "this.pauseUntil = now + left;",
     "to": ""
   },
   {
@@ -226,5 +226,23 @@
     "file": "src/app.js",
     "from": "const PAUSING = new Set(['throttled', 'unavailable', 'unauthorized', 'sender', 'denied']);",
     "to": "const PAUSING = new Set(['throttled', 'unavailable']);"
+  },
+  {
+    "name": "a 401/403 pause not lifted by new settings",
+    "file": "src/app.js",
+    "from": "if (before && SETTINGS_PAUSE.has(this.pauseCause) && this.pausedFor() > 0) {",
+    "to": "if (false) {"
+  },
+  {
+    "name": "a 429 pause lifted by new settings",
+    "file": "src/app.js",
+    "from": "const SETTINGS_PAUSE = new Set(['unauthorized', 'sender', 'denied']);",
+    "to": "const SETTINGS_PAUSE = new Set(['unauthorized', 'sender', 'denied', 'throttled']);"
+  },
+  {
+    "name": "pause cause forgotten across a restart",
+    "file": "src/app.js",
+    "from": "this.pauseCause = PAUSING.has(pause.cause) ? pause.cause : 'throttled';",
+    "to": "this.pauseCause = 'throttled';"
   }
 ]

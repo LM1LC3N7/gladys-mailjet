@@ -64,6 +64,8 @@ export const fp8 = (salt, cfg) => createHmac('sha256', salt).update(credsOf(cfg)
 const PAUSING = new Set(['throttled', 'unavailable', 'unauthorized', 'sender', 'denied']);
 // Shown as the plain pause once it is set (their own text says the cause).
 const PAUSE_ONLY = new Set(['throttled', 'unavailable']);
+// Pauses due to the keys or the sender: lifted when the user changes them.
+const SETTINGS_PAUSE = new Set(['unauthorized', 'sender', 'denied']);
 const isInt = (n, min, max) => Number.isInteger(n) && n >= min && n <= max;
 // Less than this left before the deadline: not sent (it could not be confirmed).
 const MIN_REQUEST_MS = 2_000;
@@ -149,6 +151,8 @@ export class MailjetApp {
     this.pauseUntil = 0; // monotonic
     this.pauseStep = 0;
     this.pauseGen = 0; // bumped by every pause set
+    this.pauseCause = null; // the kind that set the pause (kept in /data)
+    this.pauseVars = {};
     this.refused = null; // { salt, fp } (persisted)
     this.refusedFull = null; // sha256 of the refused keys, this process only
     this.succeeded = null; // the keys of the last success, to drop a stale refusal
@@ -237,6 +241,16 @@ export class MailjetApp {
     if (!sameSender) {
       this.outcome = 'ready';
       this.outcomeVars = {};
+      // A pause set by a 401 or a 403 is about these settings: lifted with
+      // them (a 429/5xx pause stays, it is about Mailjet).
+      if (before && SETTINGS_PAUSE.has(this.pauseCause) && this.pausedFor() > 0) {
+        this.pauseUntil = 0;
+        this.pauseStep = 0;
+        this.pauseCause = null;
+        this.pauseVars = {};
+        this.pauseGen += 1;
+        this.save();
+      }
     }
     for (const w of this.configWaiters.splice(0)) w();
     this.publishStatus();
@@ -303,7 +317,11 @@ export class MailjetApp {
       const left = pause.until - wall;
       // A date further than the longest pause is invalid (clock jumped, foreign file).
       if (left > 0 && left <= RETRY_AFTER_MAX_MS) {
-        this.pauseUntil = Math.max(this.pauseUntil, now + left);
+        if (now + left > this.pauseUntil) {
+          this.pauseUntil = now + left;
+          this.pauseCause = PAUSING.has(pause.cause) ? pause.cause : 'throttled';
+          this.pauseVars = {};
+        }
         this.pauseGen += 1;
       }
       if (isInt(pause.step, PAUSE_MIN_MS, PAUSE_MAX_MS)) {
@@ -335,7 +353,7 @@ export class MailjetApp {
       sends: this.recentSends().map((at) => Math.round(wall - (now - at))),
       pause:
         left > 0 || this.pauseStep
-          ? { until: wall + Math.max(0, left), step: this.pauseStep }
+          ? { until: wall + Math.max(0, left), step: this.pauseStep, cause: this.pauseCause }
           : null,
       refused: this.refused ? { ...this.refused } : null,
     };
@@ -381,6 +399,13 @@ export class MailjetApp {
     return this.sends;
   }
 
+  /** The text of the current pause: its own cause for a 401 or a 403, else "paused". */
+  pauseReason(left) {
+    const cause = this.pauseCause;
+    const key = PAUSING.has(cause) && !PAUSE_ONLY.has(cause) ? cause : 'paused';
+    return { key, vars: { code: '', ...this.pauseVars, time: this.clockTime(left) } };
+  }
+
   clockTime(left) {
     return new Date(this.wallNow() + left).toISOString().slice(11, 16);
   }
@@ -389,7 +414,10 @@ export class MailjetApp {
   gate(cfg, { allowRefused = false, counted = true } = {}) {
     if (!allowRefused && this.isRefused(cfg)) throw new SendError('refused');
     const left = this.pausedFor();
-    if (left > 0) throw new SendError('paused', { time: this.clockTime(left) });
+    if (left > 0) {
+      const { key, vars } = this.pauseReason(left);
+      throw new SendError(key, vars);
+    }
     if (!counted) return;
     const sends = this.recentSends();
     if (sends.length >= cfg.hourlyLimit) {
@@ -652,6 +680,8 @@ export class MailjetApp {
         : 0;
       this.pauseUntil = this.now() + Math.max(this.pauseStep, asked);
       this.pauseGen += 1;
+      this.pauseCause = kind;
+      this.pauseVars = this.varsOf(err);
     }
     // A refused address or e-mail says nothing about the channel: the status keeps its outcome.
     if (kind !== 'address_invalid' && kind !== 'invalid') {
@@ -693,10 +723,7 @@ export class MailjetApp {
     const left = this.pausedFor();
     if (left > 0) {
       // A 401 or a 403 behind the pause: its own text, with the end of the pause.
-      const key =
-        PAUSING.has(this.outcome) && !PAUSE_ONLY.has(this.outcome) ? this.outcome : 'paused';
-      const vars = { ...this.outcomeVars, time: this.clockTime(left) };
-      return { ok: false, key, vars, until: left };
+      return { ok: false, ...this.pauseReason(left), until: left };
     }
     const sends = this.recentSends();
     if (sends.length >= cfg.hourlyLimit) {

@@ -84,7 +84,9 @@
 - **A 401 without a Mailjet key code and any 403 pause** like a 429
   (coordinator, review r2): given back to the hourly count (nothing left),
   so without the pause a looping scene would hammer Mailjet with possibly
-  wrong keys; no refusal is kept. Kept as 8 bits of an HMAC-SHA-256
+  wrong keys; no refusal is kept. Such a pause is lifted when the keys or the
+  sender change (a 429/5xx pause stays), and its cause is kept in /data so
+  the status and the refused actions say it after a restart (review r3). Kept as 8 bits of an HMAC-SHA-256
   under a random salt in `/data` (full hash in memory only); after a
   restart, other keys collide with probability 1/256, and the Test button,
   which always sends, clears it.

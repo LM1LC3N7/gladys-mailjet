@@ -325,7 +325,7 @@ test('a sender not validated or a 403 is not a refusal of the keys, but pauses',
   assert.match(lastStatus(gladys)[1], /not the sender address.*before 10:01/);
   // Not hammered: 10 more e-mails, no request.
   for (let i = 0; i < 10; i += 1) {
-    assert.match((await sceneSend(gladys)).error, /slow down or failed/);
+    assert.match((await sceneSend(gladys)).error, /not the sender address.*before 10:01/);
   }
   assert.equal(mailjet.calls.length, 1);
   assert.equal(store.data.refused, null);
@@ -844,4 +844,55 @@ test('a 401 without a Mailjet key code: not kept as a refusal, but a pause (Test
   mailjet.answer = success;
   assert.equal((await sceneSend(gladys)).success, true);
   assert.equal(mailjet.calls.length, 2);
+});
+
+test('a 401/403 pause: lifted by new keys or sender, kept with its cause across a restart; a 429 pause stays', async () => {
+  const store = createMemoryStore();
+  const clock = testClock({ start: START });
+  const ctx = await makeApp({ store, clock });
+  const { gladys, mailjet } = ctx;
+  await clock.advance(SECOND);
+  mailjet.answer = () => {
+    throw err('sender', { status: 403, sent: false, code: 'send-0008' });
+  };
+  await sceneSend(gladys);
+  assert.equal(store.data.pause.cause, 'sender');
+  // The same settings saved again: still paused, with its cause.
+  await gladys.fake.configUpdated({ ...CONFIG });
+  assert.match((await sceneSend(gladys)).error, /not the sender address/);
+  // Restarted: the cause comes back from /data.
+  await ctx.app.stop();
+  const again = await makeApp({ store, clock });
+  await clock.advance(SECOND);
+  assert.match(lastStatus(again.gladys)[1], /not the sender address.*before 10:01/);
+  assert.match((await sceneSend(again.gladys)).error, /not the sender address/);
+  assert.equal(again.mailjet.calls.length, 0);
+  // A new sender: the pause is lifted at once.
+  await again.gladys.fake.configUpdated({ ...CONFIG, sender_email: 'other@example.com' });
+  assert.match(lastStatus(again.gladys)[1], /^Ready\./);
+  assert.equal((await sceneSend(again.gladys)).success, true);
+  assert.equal(again.store.data.pause, null);
+  // A 401 without code, then new keys: lifted too.
+  again.mailjet.answer = () => {
+    throw err('unauthorized', { status: 401, sent: false });
+  };
+  await sceneSend(again.gladys);
+  again.mailjet.answer = success;
+  await again.gladys.fake.configUpdated({
+    ...CONFIG,
+    sender_email: 'other@example.com',
+    api_key: API_KEY_2,
+    secret_key: SECRET_2,
+  });
+  assert.equal((await sceneSend(again.gladys)).success, true);
+  // A 429 pause is about Mailjet: new keys do not lift it.
+  again.mailjet.answer = () => {
+    throw err('throttled', { status: 429, sent: false });
+  };
+  await sceneSend(again.gladys);
+  again.mailjet.answer = success;
+  await again.gladys.fake.configUpdated({ ...CONFIG });
+  assert.match((await sceneSend(again.gladys)).error, /slow down or failed/);
+  assert.equal(again.mailjet.calls.length, 4);
+  await again.app.stop();
 });

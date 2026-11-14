@@ -28,7 +28,8 @@ the notes of the version's GitHub Release.
   e-mail sent twice; at most 2 e-mails at once; a pause (60 s doubled up to
   1 h, `Retry-After` up to 6 h) after a 429, a server error even with an
   unreadable body, a 401 without a Mailjet key code or a 403, kept across a
-  restart and not lifted by a success sent before it; refused keys (a 401
+  restart and not lifted by a success sent before it (a 401/403 pause is
+  lifted by new keys or a new sender); refused keys (a 401
   with a Mailjet key code) never sent again until they change or the Test
   button succeeds.
 - Addresses masked in the logs; no key, subject or text logged or kept.

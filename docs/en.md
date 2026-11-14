@@ -66,7 +66,8 @@ The secret key is kept by Gladys in its database, never shown again, and sent on
   in `/data`, never a key. Not a refusal of the keys: a 401 without such a code (empty, a proxy page, a cut
   answer), a 403 (sender not validated, sending denied), a refused address or e-mail (400). A 401 without
   code and a 403 are not tried again at each e-mail either: they set the same pause as a 429 (60 seconds
-  doubled up to 1 hour, kept in `/data`, Test included); nothing is kept about the keys.
+  doubled up to 1 hour, kept in `/data`, Test included); nothing is kept about the keys. Saving other keys or another sender
+  address lifts such a pause at once (a 429 or 5xx pause stays).
 
 ## Status
 
